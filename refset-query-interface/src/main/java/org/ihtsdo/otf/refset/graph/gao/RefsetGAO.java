@@ -124,7 +124,7 @@ public class RefsetGAO {
 			
 			for (GRefset v : vs) {
 				
-				r = RefsetConvertor.convert2Refsets(v);
+				r = RefsetConvertor.convert2Refset(v);
 				LOGGER.debug("Refset is {} ", r);
 				r.setMetaData(RefsetConvertor.getMetaData(v.asVertex()));
 				break;
@@ -190,7 +190,7 @@ public class RefsetGAO {
 				
 			}			
 			
-			refsets = RefsetConvertor.getRefsetss(vs);
+			refsets = RefsetConvertor.getRefsets(vs);
 			RefsetGraphFactory.commit(g);
 
 		} catch (Exception e) {
@@ -539,7 +539,7 @@ public class RefsetGAO {
 				
 			}
 			
-			refsets = RefsetConvertor.getRefsetss(ls);
+			refsets = RefsetConvertor.getRefsets(ls);
 
 					
 			
