@@ -22,6 +22,7 @@ import org.ihtsdo.otf.refset.graph.RefsetGraphFactory;
 import org.ihtsdo.otf.refset.graph.schema.GMember;
 import org.ihtsdo.otf.refset.graph.schema.GRefset;
 import org.ihtsdo.otf.refset.service.upload.Rf2Record;
+import org.ihtsdo.otf.snomed.service.ConceptLookupService;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.util.wrappers.event.EventGraph;
 import com.tinkerpop.frames.FramedGraphFactory;
 import com.tinkerpop.frames.FramedTransactionalGraph;
+import com.tinkerpop.gremlin.java.GremlinPipeline;
 
 /**Graph Access component to do CRUD operation on underlying Refset graph
  * Operation in this class supports
@@ -49,16 +51,17 @@ import com.tinkerpop.frames.FramedTransactionalGraph;
 public class RefsetAdminGAO {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(RefsetAdminGAO.class);
-		
+	private static FramedGraphFactory fgf = new FramedGraphFactory();
+
 	private RefsetGraphFactory factory;
 	
 	private MemberGAO mGao;
 	
 	private RefsetGAO rGao;
+	
+	private ConceptLookupService conceptService;
 
-	private static FramedGraphFactory fgf = new FramedGraphFactory();
-
-
+	
 	/**
 	 * @param r a {@link Refset} with or without members
 	 * @throws RefsetGraphAccessException
@@ -96,7 +99,7 @@ public class RefsetAdminGAO {
 				rcIds.add(member.getReferencedComponentId());
 				
 			}
-			Map<String, String> descriptions = rGao.getMembersDescription(rcIds);
+			Map<String, String> descriptions = conceptService.getMembersDescription(rcIds);
 			
 			int i = 0;
 			if( !CollectionUtils.isEmpty(members) ) {
@@ -290,6 +293,13 @@ public class RefsetAdminGAO {
 				g.removeVertex(refset);
 
 			}*/
+			
+			GremlinPipeline<Vertex, Vertex> removePipeline = new GremlinPipeline<Vertex, Vertex>();
+			
+			removePipeline.start(refset).inE(EdgeLabel.members.toString()).outV().outE(EdgeLabel.hasState.toString()).inV().remove();//all history member vertex
+			
+			removePipeline = new GremlinPipeline<Vertex, Vertex>();
+			removePipeline.start(refset).inE(EdgeLabel.members.toString()).outV().remove();//all member vertex
 			
 			g.removeVertex(refset);
 			
@@ -521,7 +531,7 @@ public class RefsetAdminGAO {
 		Map<String, String> outcome = new HashMap<String, String>();
 		
 		EventGraph<TitanGraph> g = factory.getEventGraph();
-		g.addListener(new Rf2ImportMemberChangeListener(g.getBaseGraph(), user));
+		//g.addListener(new Rf2ImportMemberChangeListener(g.getBaseGraph(), user));
 		g.addListener(new EffectiveTimeChangeListener(g.getBaseGraph(), user));
 
 		try {
@@ -572,19 +582,42 @@ public class RefsetAdminGAO {
 					Vertex vExistingMember = processed.get(r.getReferencedComponentId());
 
 					Member m = RefsetConvertor.getMember(vExistingMember);
-					if (m.getEffectiveTime().getMillis() == r.getEffectiveTime().getMillis()
+					
+					long existingEt = m.getEffectiveTime().getMillis();
+					
+					if (existingEt == r.getEffectiveTime().getMillis()
 							&& (m.isActive() ? "1" : "0").equals(r.getActive())) {
 						
 						LOGGER.trace("Not adding this record as it already exist {}", r.getId());
 
 						//same record so do not re-import
 						outcome.put(r.getReferencedComponentId(), "Already exist, not imported again");
-						break;
 						
-					} else if (m.getEffectiveTime().getMillis() < r.getEffectiveTime().getMillis()) {
+					} else if (existingEt < r.getEffectiveTime().getMillis()) {
 																		
+						//copy existing vertex to history vertex
+						Vertex vMh = g.getBaseGraph().addVertexWithLabel(g.getBaseGraph().getVertexLabel("GMember"));
+						
+						//then refresh with new property
 						//update a existing member vertex with start date
 						GMember mg = fgf.create(g).getVertex(vExistingMember.getId(), GMember.class);
+						vMh.setProperty(PUBLISHED, mg.getPublished());
+						vMh.setProperty(ACTIVE, mg.getActive());
+						vMh.setProperty(ID, mg.getId());
+						vMh.setProperty(EFFECTIVE_DATE, mg.getEffectiveTime());
+						vMh.setProperty(MODULE_ID, mg.getModuleId());
+						vMh.setProperty(TYPE, VertexType.hMember.toString());
+						vMh.setProperty(CREATED, mg.getCreated());
+						vMh.setProperty(CREATED_BY, mg.getCreateBy());
+						vMh.setProperty(MODIFIED_BY, mg.getModifiedBy());
+						vMh.setProperty(MODIFIED_DATE, mg.getModifiedDate());
+						
+						Edge e = vExistingMember.addEdge(EdgeLabel.hasState.toString(), vMh);
+						e.setProperty(REFERENCE_COMPONENT_ID, r.getReferencedComponentId());
+						e.setProperty(START, mg.getEffectiveTime());
+						e.setProperty(END, r.getEffectiveTime().getMillis());
+
+						
 						addMemberProperties(r, mg, VertexType.member);
 						
 						LOGGER.trace("Updated Member vertex with new properties and new state {}", mg.getId());
@@ -597,7 +630,7 @@ public class RefsetAdminGAO {
 
 						}
 						
-					} else if (m.getEffectiveTime().getMillis() > r.getEffectiveTime().getMillis()) {
+					} else if (existingEt > r.getEffectiveTime().getMillis()) {
 													
 						//add a new member vertex with Long.MAX_VALUE end date
 						Vertex vM = g.getBaseGraph().addVertexWithLabel(g.getBaseGraph().getVertexLabel("GMember"));
@@ -664,7 +697,7 @@ public class RefsetAdminGAO {
 			rcIds.add(record.getReferencedComponentId());
 			
 		}
-		descriptions = rGao.getMembersDescription(rcIds);
+		descriptions = conceptService.getMembersDescription(rcIds);
 
 		return descriptions;
 	}
@@ -718,6 +751,14 @@ public class RefsetAdminGAO {
 	@Autowired
 	public void setRefsetGao(RefsetGAO rGao) {
 		this.rGao = rGao;
+	}
+	
+	/**
+	 * @param conceptService the conceptService to set
+	 */
+	@Autowired
+	public void setConceptService(ConceptLookupService conceptService) {
+		this.conceptService = conceptService;
 	}
 
 }
