@@ -16,7 +16,7 @@
 		
 	<bean id="conceptLookService" 
 			class="org.ihtsdo.otf.snomed.service.ConceptLookUpServiceImplv1_0" 
-			p:config-ref="snomed.graph.titan.config" p:factory-ref="snomedGraphFactory"
+			p:factory-ref="snomedGraphFactory"
 		/>
 		
 	<bean id="snomed.graph.titan.config" 

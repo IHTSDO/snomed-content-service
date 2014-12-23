@@ -1,93 +1,61 @@
 /**
- * 
- */
+* Copyright 2014 IHTSDO
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 package org.ihtsdo.otf.snomed.service;
 
-import info.aduna.iteration.CloseableIteration;
-
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.commons.configuration.Configuration;
+import javax.annotation.Resource;
+
+import org.ihtsdo.otf.refset.domain.ChangeRecord;
 import org.ihtsdo.otf.refset.exception.EntityNotFoundException;
+import org.ihtsdo.otf.refset.graph.RefsetGraphAccessException;
+import org.ihtsdo.otf.refset.graph.RefsetGraphFactory;
+import org.ihtsdo.otf.refset.graph.gao.EdgeLabel;
 import org.ihtsdo.otf.snomed.domain.Concept;
+import org.ihtsdo.otf.snomed.domain.Properties;
 import org.ihtsdo.otf.snomed.exception.ConceptServiceException;
-import org.openrdf.model.URI;
-import org.openrdf.model.Value;
-import org.openrdf.model.ValueFactory;
-import org.openrdf.query.Binding;
-import org.openrdf.query.BindingSet;
-import org.openrdf.query.QueryEvaluationException;
-import org.openrdf.query.impl.EmptyBindingSet;
-import org.openrdf.query.impl.MapBindingSet;
-import org.openrdf.query.parser.ParsedQuery;
-import org.openrdf.query.parser.sparql.SPARQLParser;
-import org.openrdf.sail.Sail;
-import org.openrdf.sail.SailConnection;
-import org.openrdf.sail.SailException;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.util.StringUtils;
 
-import com.thinkaurelius.titan.core.TitanFactory;
 import com.thinkaurelius.titan.core.TitanGraph;
-import com.tinkerpop.blueprints.oupls.sail.GraphSail;
+import com.thinkaurelius.titan.core.TitanIndexQuery.Result;
+import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.Vertex;
 
 /**
- * @author Episteme Partners
+ * Service to look up Terminology data.
  *
  */
 public class ConceptLookUpServiceImpl implements ConceptLookupService {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(ConceptLookUpServiceImpl.class);
-	
-	private static final String BASE_URI = "http://sct.snomed.info/";
-	
-	private TitanGraph graph;
-	
-	private static final String Q_CONCEPT_ID = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
-			+ "prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
-			+ "prefix owl: <http://www.w3.org/2002/07/owl#>"
-			+ "prefix xsd: <http://www.w3.org/2001/XMLSchema#>"
-			+ "prefix sn: <http://sct.snomed.info/#>"
-			+ "SELECT DISTINCT ?x "
-			+ " WHERE { "
-			+ "?x ?o ?y. \n"
-			+ "?x sn:description ?desc. \n"
-			+ "?desc ?do ?dy \n"
-			+ "} limit %d \n OFFSET %d ";
-	
-	private static final String Q_CONCEPT = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
-			+ "prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
-			+ "prefix owl: <http://www.w3.org/2002/07/owl#>"
-			+ "prefix xsd: <http://www.w3.org/2001/XMLSchema#>"
-			+ "prefix sn: <http://sct.snomed.info/#>"
-			+ "SELECT ?x ?o ?y "
-			+ " WHERE { "
-			+ "?x ?o ?y. \n"
-			+ "?x sn:description ?desc.\n"
-			+ "?desc ?do ?dy \n"
-			+ "}";
-	
-	private static final String Q_TYPES = "prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
-			+ "prefix sn: <http://sct.snomed.info/#>\n"
-			+"select ?SubTypeName ?SubTypeId ?id where {"
-			+"?SubTypeId rdfs:subClassOf ?id.\n"
-			+"?SubTypeId rdfs:label ?SubTypeName.\n"
-			+"} limit 100";
+		
+	private RefsetGraphFactory factory;
 
-
-	private String repositoryConfig;
-	
-	private Configuration config;
 
 	/* (non-Javadoc)
 	 * @see org.ihtsdo.otf.snomed.service.ConceptLookupService#getConcepts(java.util.List)
 	 */
 	@Override
+	@Cacheable(value = { "concepts" })
 	public Map<String, Concept> getConcepts(Set<String> conceptIds)
 			throws ConceptServiceException {
 
@@ -96,61 +64,58 @@ public class ConceptLookUpServiceImpl implements ConceptLookupService {
 		Map<String, Concept> concepts = new HashMap<String, Concept>();
 		
 		TitanGraph g = null;
-		Sail sail = null;
-		SailConnection sc = null;
 		try {
-			g = getGraph();
-			
-			sail = getSail(g);
-			
-			sail.initialize();
-			
-			sc = sail.getConnection();
-			
-			SPARQLParser parser = new SPARQLParser();
-			CloseableIteration<? extends BindingSet, QueryEvaluationException> sparqlResults;
 			
 			
-			ParsedQuery sparql = parser.parseQuery(Q_CONCEPT, "http://sct.snomed.info");
+			g = factory.getReadOnlyGraph();			
 			
-			ValueFactory vf = sail.getValueFactory();
-			
-			
-			for (String id : conceptIds) {
-				
-				if (StringUtils.isEmpty(id)) {
-					
-					//ignore all null keys or empty keys
-					LOGGER.debug("ingoring {} for concepts details as invalid", id);
+			/**/
+			List<String> idLst = new ArrayList<String>();
+			idLst.addAll(conceptIds);
 
-					continue;
+			int length = idLst.size()/1024;
+			int to = idLst.size() > 1024 ? 1024 : conceptIds.size();
+			int from = 0;
+			for (int i = 0; i < length+1; i++) {
+				
+				LOGGER.debug("getting concept description from {} to {} ", from, to);
+				List<String> subList = idLst.subList(from, to);
+				
+				String ids = org.apache.commons.lang.StringUtils.join(subList, " OR ");
+				Iterable<Result<Vertex>> vs = g.indexQuery("concept","v.sctid:" + ids).vertices();
+				for (Result<Vertex> r : vs) {
+									
+					Vertex v = r.getElement();
+					
+					Object sctid = v.getProperty(Properties.sctid.toString());
+					Object label = v.getProperty(Properties.title.toString());
+					if (sctid != null && label != null && idLst.contains(sctid.toString())) {
+						
+						Concept c = convertToConcept(v);
+						concepts.put(sctid.toString(), c);
+					}
+					
 				}
 				
-				URI uri = vf.createURI(BASE_URI + id);
-				
-				MapBindingSet bindings = new MapBindingSet();
-				
-				bindings.addBinding("x", uri);
-				
+				//to run next loop if required
+				from = to > idLst.size() ? idLst.size() : to;
+				to = (to + 1024) > idLst.size() ? idLst.size() : to+1024;
 
-				sparqlResults = sc.evaluate(sparql.getTupleExpr(), sparql.getDataset(), bindings, true);
-				
-				Concept c = getConcept(sparqlResults);
-				concepts.put(id, c);
-						
-				
+
 			}
+
+			RefsetGraphFactory.commit(g);
+			
 		} catch (Exception e) {
 			
 			LOGGER.error("Error duing concept details for concept map fetch", e);
-			
+			RefsetGraphFactory.rollback(g);
+
 			throw new ConceptServiceException(e);
 			
 		} finally {
 			
-			close(sc);
-			close(sail);
-			close(g);
+			RefsetGraphFactory.shutdown(g);
 			
 		}
 		
@@ -163,6 +128,7 @@ public class ConceptLookUpServiceImpl implements ConceptLookupService {
 	 * @see org.ihtsdo.otf.snomed.service.ConceptLookupService#getConcept(java.lang.String)
 	 */
 	@Override
+	@Cacheable(value = { "concept" })
 	public Concept getConcept(String conceptId) throws ConceptServiceException,
 			EntityNotFoundException {
 		
@@ -174,56 +140,45 @@ public class ConceptLookUpServiceImpl implements ConceptLookupService {
 		}
 		
 		TitanGraph g = null;
-		Sail sail = null;
-		SailConnection sc = null;
+		
 		try {
 			
-				g = getGraph();
-				
-				sail = getSail(g);
-				
-				sail.initialize();
-				
-				sc = sail.getConnection();
-				
-				SPARQLParser parser = new SPARQLParser();
-				CloseableIteration<? extends BindingSet, QueryEvaluationException> sparqlResults;
-				
-				
-				ParsedQuery sparql = parser.parseQuery(Q_CONCEPT, "http://sct.snomed.info");
-				
-				ValueFactory vf = sail.getValueFactory();
-				URI uri = vf.createURI(BASE_URI + conceptId);
-				
-				MapBindingSet bindings = new MapBindingSet();
-				
-				bindings.addBinding("x", uri);
-				
+			g = factory.getReadOnlyGraph();
+			
+			Iterable<Vertex> vs = g.getVertices(Properties.sctid.toString(), conceptId);
 
-				sparqlResults = sc.evaluate(sparql.getTupleExpr(), sparql.getDataset(), bindings, true);
+			for (Vertex v : vs) {
 				
-				return getConcept(sparqlResults);
-				
+				Concept c = convertToConcept(v);
+				RefsetGraphFactory.commit(g);
+
+				return c;
+
+			}
+
+			RefsetGraphFactory.commit(g);
 				
 		} catch (Exception e) {
 			
 			LOGGER.error("Error duing concept details fetch", e);
-			
+			RefsetGraphFactory.rollback(g);
+
 			throw new ConceptServiceException(e);
 			
 		} finally {
 			
-			close(sc);
-			close(sail);
-			close(g);
+			RefsetGraphFactory.shutdown(g);
 		}
-		
+
+		throw new EntityNotFoundException(String.format("Invalid concept id", conceptId));
+
 	}
 
 	/* (non-Javadoc)
 	 * @see org.ihtsdo.otf.snomed.service.ConceptLookupService#getConceptIds(int, int)
 	 */
 	@Override
+	@Cacheable(value = { "conceptIds" })
 	public Set<String> getConceptIds(int offset, int limit)
 			throws ConceptServiceException {
 		LOGGER.debug("getting concept ids with offset {} and limit {} ", offset, limit);
@@ -231,218 +186,44 @@ public class ConceptLookUpServiceImpl implements ConceptLookupService {
 		TreeSet<String> conceptIds = new TreeSet<String>();
 		
 		TitanGraph g = null;
-		Sail sail = null;
-		SailConnection sc = null;
 		try {
 			
-				g = getGraph();
-				
-				sail = getSail(g);
-				
-				sail.initialize();
-				
-				sc = sail.getConnection();
-				
-				SPARQLParser parser = new SPARQLParser();
-				CloseableIteration<? extends BindingSet, QueryEvaluationException> sparqlResults;
-				
-				limit = limit <= 0 ? 4000 : limit;
-				
-				offset = limit <= 0 ? 1 : offset;
+			g = factory.getReadOnlyGraph();
 
-				String query = String.format(Q_CONCEPT_ID, limit, offset);
-				
-				
-				ParsedQuery sparql = parser.parseQuery(query, "http://sct.snomed.info");
+			Iterable<Result<Vertex>> vs = g.indexQuery("concept","v.sctid:*").offset(offset).limit(limit).vertices();
 
-				sparqlResults = sc.evaluate(sparql.getTupleExpr(), sparql.getDataset(), new EmptyBindingSet(), true);
+			for (Result<Vertex> v : vs) {
 				
-				while (sparqlResults.hasNext()) {
+				String sctid = v.getElement().getProperty(Properties.sctid.toString());
+
+				if (!StringUtils.isEmpty(sctid)) {
 					
-					BindingSet binding = sparqlResults.next();
-					
-					if (binding.hasBinding("x")) {
-						
-						Value v = binding.getValue("x");
-						
-						if (v != null && v.stringValue().contains(BASE_URI)) {
-							
-							String conceptId = StringUtils.delete(v.stringValue(), BASE_URI);
-							LOGGER.debug("Adding  concept ids  {} to list", conceptId);
+					LOGGER.trace("Adding sctid {} to concept id list ", sctid);
 
-							conceptIds.add(conceptId);
+					conceptIds.add(sctid);
 
-							
-						}
-
-					} else {
-						
-						LOGGER.debug("Binding not available"); //TODO remove later
-
-					}
-					
-					
 				}
-				
-				sparqlResults.close();
-				
+
+			}
+			
+			RefsetGraphFactory.commit(g);
+									
 		} catch (Exception e) {
 			
 			LOGGER.error("Error duing concept ids fetch ", e);
-			
+			RefsetGraphFactory.rollback(g);
+
 			throw new ConceptServiceException(e);
 			
 		} finally {
 			
-			close(sc);
-			close(sail);
-			close(g);
+			RefsetGraphFactory.shutdown(g);
 			
 		}
 		LOGGER.debug("returning total {} concept ids ", conceptIds.size());
 
 		return Collections.unmodifiableSortedSet(conceptIds);
-	}
-
-	/**
-	 * @param sail
-	 */
-	private void close(Sail sail) {
-		
-		if (sail != null) {
-			
-			LOGGER.debug("Shutting down sail storage");
-			try {
-				
-				sail.shutDown();
-				
-			} catch (SailException e) {
-				// TODO Auto-generated catch block
-				LOGGER.error("Error in sail shutdown", e);
-
-			}
-			
-		}
-		
-	}
-
-	/**
-	 * @param sc
-	 */
-	private void close(SailConnection sc) {
-		// TODO Auto-generated method stub
-		
-		if (sc != null) {
-			
-			LOGGER.debug("Shutting down sc storage");
-			try {
-				
-				sc.close();
-				
-			} catch (SailException e) {
-				// TODO Auto-generated catch block
-				LOGGER.error("Error in saill connection closing", e);
-
-			}
-			
-		}
-
-	}
-
-	/**
-	 * @param g
-	 */
-	private void close(TitanGraph g) {
-		
-		if (g != null) {
-			
-			LOGGER.debug("Shutting down graph storage");
-			g.shutdown();
-			
-		}
-		
-	}
-
-	/**
-	 * @param repositoryConfig the repositoryConfig to set
-	 */
-	public void setRepositoryConfig(String repositoryConfig) {
-		this.repositoryConfig = repositoryConfig;
-	}
-	
-	
-	private Sail getSail(TitanGraph graph) {
-        
-        GraphSail<TitanGraph> sail = new GraphSail<TitanGraph>(graph);
-		sail.enforceUniqueStatements(true);
-		
-		return sail;
-	}
-	
-	private TitanGraph getGraph() {
-		
-		TitanGraph g = this.graph;
-		
-		if ( g != null && g.isOpen() ) {
-			
-			return g;
-			
-		}
-		
-		if( config != null) {
-			
-			this.graph = TitanFactory.open(config);
-			
-			return this.graph;
-		}
-		
-		if (!StringUtils.isEmpty(repositoryConfig)) {
-			
-			this.graph = TitanFactory.open(repositoryConfig);
-			
-			return this.graph;
-
-		}
-		
-		 throw new IllegalArgumentException("Repository configuration is required");
-
-	}
-	
-	private Concept getConcept(CloseableIteration<? extends BindingSet, QueryEvaluationException> sparqlResults) throws QueryEvaluationException {
-		
-		Concept concept = new Concept();
-		String id = null;
-		while (sparqlResults.hasNext()) {
-			
-			BindingSet bSet = sparqlResults.next();
-						
-			LOGGER.trace("Binding set {}", bSet);
-		    Binding o = bSet.getBinding("o");
-		    Binding y = bSet.getBinding("y");
-	
-			if ( id == null) {
-				
-				Value v = bSet.getValue("x");
-				id = StringUtils.delete(v.stringValue(), BASE_URI);
-				concept.setId(id);
-				
-			}
-			LOGGER.trace("Value for o {} and y {} ", o, y);
-
-			if (o != null && y != null) {
-				
-				concept.addProperties(o.getValue(), y.getValue());
-
-			}
-		    
-		}
-		concept = StringUtils.isEmpty(concept.getId()) ? null : concept;
-		
-		LOGGER.debug("Returning {}", concept);
-
-		return concept;
-	}
-	
+	}	
 	
 	/* (non-Javadoc)
 	 * @see org.ihtsdo.otf.snomed.service.ConceptLookupService#getTypes(String)
@@ -456,51 +237,12 @@ public class ConceptLookUpServiceImpl implements ConceptLookupService {
 		Map<String, String> types = new HashMap<String, String>();
 		
 		TitanGraph g = null;
-		Sail sail = null;
-		SailConnection sc = null;
 		try {
-			g = getGraph();
 			
-			sail = getSail(g);
-			
-			sail.initialize();
-			
-			sc = sail.getConnection();
-			
-			SPARQLParser parser = new SPARQLParser();
-			CloseableIteration<? extends BindingSet, QueryEvaluationException> sparqlResults;
-			
-			
-			ParsedQuery sparql = parser.parseQuery(Q_TYPES, "http://sct.snomed.info");
-			
-			ValueFactory vf = sail.getValueFactory();
-			
-			URI uri = vf.createURI(BASE_URI + id);
-			
-			MapBindingSet bindings = new MapBindingSet();
-			
-			bindings.addBinding("id", uri);
-			
-
-			sparqlResults = sc.evaluate(sparql.getTupleExpr(), sparql.getDataset(), bindings, true);
-			
-			while (sparqlResults.hasNext()) {
-				
-				BindingSet bSet = sparqlResults.next();
-							
-				LOGGER.trace("Binding set {}", bSet);
-			    Binding typeName = bSet.getBinding("SubTypeName");
-			    Binding typeId = bSet.getBinding("SubTypeId");
-				LOGGER.trace("Value for o {} and y {} ", typeName, typeId);
-
-				if ( typeName != null && typeId != null) {
-					
-					types.put(StringUtils.delete(typeId.getValue().stringValue(), BASE_URI) , typeName.getValue().stringValue());
-					
-				}
+			g = factory.getReadOnlyGraph();
 
 			    
-			}
+			
 					
 			
 		
@@ -512,9 +254,7 @@ public class ConceptLookUpServiceImpl implements ConceptLookupService {
 			
 		} finally {
 			
-			close(sc);
-			close(sail);
-			close(g);
+			RefsetGraphFactory.shutdown(g);
 			
 		}
 		
@@ -522,12 +262,401 @@ public class ConceptLookUpServiceImpl implements ConceptLookupService {
 
 		return Collections.unmodifiableMap(types);
 	}
+	
+	
+	/**returns referenceComponentDescription for given referenceComponentId
+	 * @param referenceComponentId
+	 * @return
+	 * @throws RefsetGraphAccessException
+	 */
+	@Override
+	@Cacheable(value = { "referenceComponentDescription" })
+	public String getMemberDescription(String referenceComponentId) throws RefsetGraphAccessException  {
+		
+		LOGGER.debug("getting member description for {} ", referenceComponentId);
+
+		String label = "";
+
+		if (StringUtils.isEmpty(referenceComponentId)) {
+			
+			return label;
+		}
+
+		TitanGraph g = null;
+		try {
+			
+			
+				
+				g = factory.getReadOnlyGraph();
+
+				Iterable<Result<Vertex>> vs = g.indexQuery("concept","v.sctid:" + referenceComponentId).vertices();
+				for (Result<Vertex> r : vs) {
+									
+					Vertex v = r.getElement();
+					
+					label = v.getProperty(Properties.title.toString());
+					break;
+					
+				}
+
+				
+				RefsetGraphFactory.commit(g);
+		
+		} catch (Exception e) {
+			
+			RefsetGraphFactory.rollback(g);
+
+			LOGGER.error("Error duing concept details fetch", e);
+			
+			throw new RefsetGraphAccessException(e.getMessage(), e);
+			
+		} finally {
+			
+			RefsetGraphFactory.shutdown(g);
+
+		}
+		
+		return label;
+	}
+
+	
+	/** Returns {@link Map} of referenceComponentId as key and their description as value
+	 * @param referenceComponentId
+	 * @return
+	 * @throws RefsetGraphAccessException
+	 */
+	@Override
+	@Cacheable(value = { "referenceComponentDescriptions" })
+	public Map<String, String> getMembersDescription(List<String> rcIds) throws RefsetGraphAccessException  {
+		
+		LOGGER.trace("getting members description for {} ", rcIds);
+
+		Map<String, String> descMap = new HashMap<String, String>();
+		
+		if (rcIds == null || rcIds.isEmpty()) {
+			
+			return descMap;
+		}
+
+		TitanGraph g = null;
+		try {
+				
+				g = factory.getReadOnlyGraph();
+
+				//max OR clause can be 1024 so send in 1024 at max in one call
+				int length = rcIds.size()/1024;
+				int to = rcIds.size() > 1024 ? 1024 : rcIds.size();
+				int from = 0;
+				for (int i = 0; i < length+1; i++) {
+					
+					LOGGER.debug("getting members description from {} to {} ", from, to);
+
+					List<String> subList = rcIds.subList(from, to);
+					
+					String ids = org.apache.commons.lang.StringUtils.join(subList, " OR ");
+					Iterable<Result<Vertex>> vs = g.indexQuery("concept","v.sctid:" + ids).vertices();
+					for (Result<Vertex> r : vs) {
+										
+						Vertex v = r.getElement();
+						
+						Object sctid = v.getProperty(Properties.sctid.toString());
+						Object label = v.getProperty(Properties.title.toString());
+						if (sctid != null && label != null && rcIds.contains(sctid.toString())) {
+							
+							descMap.put(sctid.toString(), label.toString());
+
+						}
+						
+					}
+					
+					//to run next loop if required
+					from = to > rcIds.size() ? rcIds.size() : to;
+					to = (to + 1024) > rcIds.size() ? rcIds.size() : to+1024;
+
+
+				}
+				
+
+				RefsetGraphFactory.commit(g);
+		
+		} catch (Exception e) {
+			
+			RefsetGraphFactory.rollback(g);
+
+			LOGGER.error("Error duing concept details fetch", e);
+			
+			throw new RefsetGraphAccessException(e.getMessage(), e);
+			
+		} finally {
+			
+			RefsetGraphFactory.shutdown(g);
+
+		}
+		
+		return descMap;
+	}
+	
+	
+	/* (non-Javadoc)
+	 * @see org.ihtsdo.otf.snomed.service.ConceptLookupService#getConcepts(java.util.List)
+	 */
+	@Override
+	@Cacheable(value = { "conceptsHistory" })
+	public Map<String, ChangeRecord<Concept>> getConceptHistory(Set<String> conceptIds)
+			throws ConceptServiceException {
+
+		LOGGER.debug("getting concepts details for {}", conceptIds);
+		
+		Map<String, ChangeRecord<Concept>> concepts = new HashMap<String, ChangeRecord<Concept>>();
+		
+		TitanGraph g = null;
+		try {
+			
+			
+			g = factory.getReadOnlyGraph();			
+			
+			/**/
+			List<String> idLst = new ArrayList<String>();
+			idLst.addAll(conceptIds);
+
+			int length = idLst.size()/1024;
+			int to = idLst.size() > 1024 ? 1024 : conceptIds.size();
+			int from = 0;
+			for (int i = 0; i < length+1; i++) {
+				
+				LOGGER.debug("getting concept description from {} to {} ", from, to);
+				List<String> subList = idLst.subList(from, to);
+				
+				String ids = org.apache.commons.lang.StringUtils.join(subList, " OR ");
+				Iterable<Result<Vertex>> vs = g.indexQuery("concept","v.sctid:" + ids).vertices();
+				for (Result<Vertex> r : vs) {
+									
+					Vertex v = r.getElement();
+					
+					Object sctid = v.getProperty(Properties.sctid.toString());
+					Object label = v.getProperty(Properties.title.toString());
+					if (sctid != null && label != null && idLst.contains(sctid.toString())) {
+						ChangeRecord<Concept> cr = new ChangeRecord<Concept>();
+						List<Concept> cLst = new ArrayList<Concept>();
+						//TODO more work required
+						Concept c = convertToConcept(v);
+						cLst.add(c);
+						
+						concepts.put(sctid.toString(), cr);
+					}
+					
+				}
+				
+				//to run next loop if required
+				from = to > idLst.size() ? idLst.size() : to;
+				to = (to + 1024) > idLst.size() ? idLst.size() : to+1024;
+
+
+			}
+
+			RefsetGraphFactory.commit(g);
+			
+		} catch (Exception e) {
+			
+			LOGGER.error("Error duing concept details for concept map fetch", e);
+			RefsetGraphFactory.rollback(g);
+
+			throw new ConceptServiceException(e);
+			
+		} finally {
+			
+			RefsetGraphFactory.shutdown(g);
+			
+		}
+		
+		LOGGER.debug("returning total {} concepts ", concepts.size());
+
+		return Collections.unmodifiableMap(concepts);
+	}
+	
+	
+	/* (non-Javadoc)
+	 * @see org.ihtsdo.otf.snomed.service.ConceptLookupService#getConcept(java.lang.String)
+	 */
+	@Override
+	@Cacheable(value = { "conceptHistory" })
+	public ChangeRecord<Concept> getConceptHistory(String conceptId) throws ConceptServiceException,
+			EntityNotFoundException {
+		
+		LOGGER.debug("getting concept details and history for {} ", conceptId);
+
+		if (StringUtils.isEmpty(conceptId)) {
+			
+			throw new EntityNotFoundException(String.format("Invalid concept id", conceptId));
+		}
+		
+		TitanGraph g = null;
+		
+		try {
+			
+			g = factory.getReadOnlyGraph();
+			Iterable<Vertex> vs = g.getVertices(Properties.sctid.toString(), conceptId);
+
+			for (Vertex v : vs) {
+								
+				ChangeRecord<Concept> cr = getHistory(v);
+				return cr;
+			}
+
+			RefsetGraphFactory.commit(g);
+		} catch (Exception e) {
+			
+			LOGGER.error("Error duing concept details fetch", e);
+			RefsetGraphFactory.rollback(g);
+
+			throw new ConceptServiceException(e);
+			
+		} finally {
+			
+			RefsetGraphFactory.shutdown(g);
+		}
+		
+		throw new EntityNotFoundException(String.format("Concept details not available for given concept id %s", conceptId));
+
+
+	}
+
+
+	
+	/**
+	 * @param v
+	 * @return
+	 */
+	private ChangeRecord<Concept> getHistory(Vertex v) {
+		ChangeRecord<Concept> cr = new ChangeRecord<Concept>();
+		
+		if (v != null) {
+			
+			Concept c = convertToConcept(v);
+			cr.getRecords().add(c);
+			Iterable<Vertex> vHcs = v.getVertices(Direction.OUT, EdgeLabel.hasState.toString());
+
+			Map<DateTime, String> descriptions = getHistoryDescription(v);
+			
+			//now populate all history concept and use above map to populate title
+			for (Vertex vHc : vHcs) {
+				
+				Concept hc = convertToConcept(vHc);
+				
+				DateTime et = hc.getEffectiveTime();
+				LOGGER.debug("Effective time {} ", et);
+
+				if (descriptions.containsKey(et)) {
+					
+					hc.setLabel(descriptions.get(hc.getEffectiveTime()));
+				}
+				
+				cr.getRecords().add(hc);
+
+			}
+		}
+		
+		return cr;
+	}
 
 	/**
-	 * @param config the config to set
+	 * @param v
+	 * @return
 	 */
-	public void setConfig(Configuration config) {
-		this.config = config;
+	private Map<DateTime, String> getHistoryDescription(Vertex v) {
+		Map<DateTime, String> desc = new HashMap<DateTime, String>();
+		
+		if (v != null) {
+			
+			Iterable<Vertex> vDs = v.getVertices(Direction.OUT, EdgeLabel.hasDescription.toString());
+			for (Vertex vD : vDs) {
+				//only interested in fsn description not synonyms or any other type of description .
+				//so check description vertex which has 900000000000003001 typedid for history label.
+				Object typeId = vD.getProperty(Properties.typeId.toString());
+				if ("900000000000003001".equals(typeId)) {
+					
+					Iterable<Vertex> vHDs = vD.getVertices(Direction.OUT, EdgeLabel.hasState.toString());
+					
+					for (Vertex vHD : vHDs) {
+						
+						Object et = vHD.getProperty(Properties.effectiveTime.toString());
+						Object title = vHD.getProperty(Properties.title.toString());
+						
+						LOGGER.debug("Effective time {} & title {} ", et, title);
+
+						if (et != null && title != null ) {
+							
+							desc.put(new DateTime(et), title.toString());
+							
+						}
+					}
+
+				}
+			}
+		}
+
+		LOGGER.debug("Total {} history description records", desc.size());
+
+		return desc;
+	}
+
+	/**
+	 * @param factory the factory to set
+	 */
+	@Resource(name = "snomedGraphFactory")
+	public  void setFactory(RefsetGraphFactory factory) {
+		
+		this.factory = factory;
+	}
+	
+	
+	private Concept convertToConcept(Vertex v) {
+		if (v == null) {
+			
+			return null;
+		}
+		
+		Set<String> keys = v.getPropertyKeys();
+		Concept c = new Concept();
+
+		if (keys.contains(Properties.effectiveTime.toString())) {
+			
+			Long effectiveTime = v.getProperty(Properties.effectiveTime.toString());
+			c.setEffectiveTime(new DateTime(effectiveTime));
+		}
+	
+		if (keys.contains(Properties.moduleId.toString())) {
+			
+			String moduleId = v.getProperty(Properties.moduleId.toString());
+			c.setModuleId(moduleId);
+
+		}
+		
+		if (keys.contains(Properties.sctid.toString())) {
+
+			String sctid = v.getProperty(Properties.sctid.toString());
+
+			c.setId(sctid);
+
+		}
+		
+		if (keys.contains(Properties.status.toString())) {
+
+			String status = v.getProperty(Properties.status.toString());
+			boolean active = "1".equals(status) ? true : false;
+			c.setActive(active);
+
+		}
+		
+		if (keys.contains(Properties.title.toString())) {
+
+			String title = v.getProperty(Properties.title.toString());
+
+			c.setLabel(title);
+
+		}
+		
+		return c;
 	}
 
 }

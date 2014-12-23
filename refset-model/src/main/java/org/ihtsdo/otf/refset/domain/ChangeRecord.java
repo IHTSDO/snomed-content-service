@@ -11,11 +11,18 @@
 */
 package org.ihtsdo.otf.refset.domain;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 /**
  *
  */
-public class ChangeRecord<T> {
+public class ChangeRecord<T> implements Serializable {
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	
 	String changeType;
 	List<T> records;
@@ -36,13 +43,19 @@ public class ChangeRecord<T> {
 	/**
 	 * @return the records
 	 */
-	public List<T> getRecord() {
+	public List<T> getRecords() {
+		
+		if (records == null) {
+			
+			records = new ArrayList<T>();
+		}
+		
 		return records;
 	}
 	/**
 	 * @param records the records to set
 	 */
-	public void setRecord(List<T> records) {
+	public void setRecords(List<T> records) {
 		this.records = records;
 	}
 	
