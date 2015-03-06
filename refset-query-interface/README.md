@@ -1,49 +1,129 @@
-#Refset Experimental Query Interface
+![alt text](http://www.ihtsdo.org/images/small_logo.png "IHTSDO's Refset Rest Server")
 
->THIS IS WORK IN PROGRESS at the moment and more of a scratch pad
+#Refset Rest Server
 
-This project provides a querying interface to any http endpoints of sparql 1.1 compliant servers.
-Plan is to wrap this with security so that only authrorized user can query underlying data. There will be an interface for update end points also.
-  
-To use this - all you need to do is run 
+---
+##Technologies & Framework Used
 
-	mvn clean install tomcat7:run
+Refset rest server is built with extensive set of open source libraries and frameworks. Main ones are listed as follows
 
-then go to http://localhost:/8081 and configure database
+|  Technology | version   |  Remark |
 
-To add new end point - just add new endpoint in relevant blocks of home.jsp
+|---|:---|:---|
 
-At present it is configured with a sparql end point with a Marmotta web server expected to run on port 9090. 
-You can start marmotta server locally by using marmotta webapp launcher available in your marmotta platform - ..launchers/marmotta-webapp
+|  JDK |  v1.7 |   |
 
-	mvn tomcat7:run -Dmarmotta.port=9090 -Dmarmotta.home=/tmp/marmotta-app 
+| Servlet | v3.x |  |
 
-obviously you must have loaded data before running marmotta end points and it can be done using kiwi loader. 
-Create required database and user using config/database.sql and run below command with required input data.
+|  Maven |  v3.2.2 |   |
 
-	java -jar marmotta-loader-kiwi-3.2.1.jar -a out.rdf.zip -B kiwi -b 'http://snomedtools.info/snomed/term/' -C jdbc:postgresql://localhost:5432/snomed?prepareThreshold=3 -U refset -W refset -I -s 
+|Spring Framework | v4.x | |
+
+|Spring Security |v3.x| |
+
+|Datastax Cassandra |v2.0.10| |
+
+|Elastic Search| v1.2.1| |
+
+|Titan DB v0.5.x| |
+
+|Tinker Pop blueprints API |v2.5.x| |
+
+|Logback |v1.1.2| |
+
+|Swagger |v2.x | |
+
+|Jackson JSON Processor |v2.x| |
+
+    
+    
+Operational matrix can be enabled and viewed using Graphite or similar tool 
+
+For more find grained details of each of the library used take a look at pom file.
+
+---
+## Backend
+
+In order to support refset tool data storage, this service is using Cassandra backed Titan db. 
+It has two keyspaces namely 'snomed' and 'refset'. 'snomed' keyspace is consist of SNOMED® terminology graph. 'refset' keysapce is consist of refset graph.
+
+Both keyspaces have corresponding elastic search index with identical index names. Both 'snomed' and 'refset' graphs are isolated to each other. 
+
+---
+###Schema
+
+Graphs are required to have appropriate schemas. Schema must be created before any storage to any of graphs. Java programs which basically uses low level blueprint api, are used to create these schemas. These program are safe to run any time as before creating any schema element program verifies its availability. 
+
+Initial 'snomed' schema can be created using following command
+
+
+	java -jar snomed-graph-indexer-0.1.1-SNAPSHOT.jar snomed-graph-es-dev.properties schema
+
+Initial 'refset' schema can be created using following command
+ 
+	java -jar refset-graph-indexer-0.1.1-SNAPSHOT.jar refset-graph-es-dev.properties schema
+
+---
+###Indexes
+
+Graph also need to have relevant indexes. 
+
+Initial 'snomed' index can be created using following command
+ 
+	java -jar snomed-graph-indexer-0.1.1-SNAPSHOT.jar snomed-graph-es-dev.properties index
+
+Initial 'refset' index can be created using following command
+
+	java -jar refset-graph-indexer-0.1.1-SNAPSHOT.jar refset-graph-es-dev.properties index
+
+There are updates to 'refset' index which needs to run as follows
+
+	java -jar refset-graph-indexer-0.1.1-SNAPSHOT.jar refset-graph-es-dev.properties update
+
+---
+##Data Load
+
+Application would not work unless it has SNOMED® terminology data. Same can be loaded using below commands.
+ 
+ 
+	java -jar snomed-graph-loader-0.1.1-SNAPSHOT.jar -config snomed-graph-es-dev.properties -type full -bSize 10000 -cf sct2_Concept_Snapshot_INT_20150131.txt >> concept.log 
+
+	java -jar snomed-graph-loader-0.1.1-SNAPSHOT.jar -config snomed-graph-es-dev.properties -type full -bSize 10000 -cf sct2_Description_Snapshot_INT_20150131.txt >> desc.log 
+
+
+	java -jar snomed-graph-loader-0.1.1-SNAPSHOT.jar -config snomed-graph-es-dev.properties -type full -bSize 10000 -cf sct2_Relationship_Snapshot_INT_20150131.txt >> rel.log 
+
+---
+##Build & Deployment
+
+Locally application can be installed using command 'mvn clean -DskipTests=true package install'. However there are set of ansible scripts which uses jenkins's push to deploy on the server.
+
+
+##Run
+
+Locally application can be run using command 'mvn -DRefsetConfig=src/main/resources/refset-dev.properties clean tomcat7:run'
+
+
+---
+###Maintenance
+
+Most people do not need this. And only relevant if you are trying to drop existing data & schema
+
+Dropping keyspace. Use cqlsh provided with datastax cassandra distribution.
+
+ 
+	DROP KEYSPACE snomed;
 	
-##TDB Data loading
+MORE TBD
 
-Use following command from your JENA_HOME/bin directory. This is only for initial load. It will load given input(out.rdf) to JENA_HOME/snomed directory.If it is not initial load then use tdbloader instead of tdbloader2
+---
+##API Documentation
 
-	./tdbloader2 --loc ../snomed /tmp/out.rdf
-
-Jena tdb data can be accessed using Fuseki. It can be started using configuration available in config/config-tdb-text.ttl. 
+API documentation is available at [IHTSDO Refset Service API](http://dev-refset.ihtsdotools.org:8080/refset/ "IHTSDO Refset Service API") 
 
 
-	./fuseki-server --config=config-tdb-text.ttl
 
-Jena full text search queries will only work if a full text index is created. This can be done using above configuration file config-tdb-text.ttl. It already has required configuration. Full indexing can be done using jena.textindexer 
 
-	java -cp fuseki-server.jar jena.textindexer --desc=config-tdb-text.ttl
-Above command will start Fuseki end point is running as http://localhost:3030/snomed/query
 
-Now some guidelines to run query
-If you are running select query on Marmotta endpoint then use browse as output option. And if it is Fuseki end point then use table.
-
-Construct query use XML-Jena option for Fuseki end point. You can also use plain text or json option for any query type if using Fuseki endpoint. 
-
-Queries are available in resources/sparql folder. These are just demo queries. Real time query can be more complex.
-&copy; IHTSDO
+&copy; IHTSDO 
 

@@ -35,7 +35,7 @@ import com.wordnik.swagger.annotations.ApiOperation;
  *
  */
 @RestController
-@Api(value="User Logout service", description="Service to logout user")
+@Api(value="Authentication", description="Service to logout user")
 public class LogoutController {
 	
 	private static final Logger logger = LoggerFactory.getLogger(LogoutController.class);
@@ -53,7 +53,7 @@ public class LogoutController {
 			notes = "This api call just clears the current security context for X-REFSET-AUTH-TOKEN ")
     public ResponseEntity<Result< Map<String, Object>>> logout() throws Exception {
 		
-		logger.debug("logout user {}");
+		logger.debug("logout user");
 
 		Result<Map<String, Object>> r = Utility.getResult();
 		
