@@ -37,3 +37,7 @@ To create Refset Graph Schema & Index
 
 java -jar refset-graph-indexer-0.1.1-SNAPSHOT.jar ../src/main/resources/refset-graph-es-dev.properties schema
 java -jar refset-graph-indexer-0.1.1-SNAPSHOT.jar ../src/main/resources/refset-graph-es-dev.properties index
+
+
+If reloading you do not need to create the schema & Index.
+
