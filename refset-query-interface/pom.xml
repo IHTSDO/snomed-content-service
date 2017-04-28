@@ -2,8 +2,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<artifactId>refsetService</artifactId>
-	<name>refset-query-interface</name>
+	<artifactId>graphService</artifactId>
+	<name>snomed-query-interface</name>
 	<packaging>war</packaging>
 	
 	<parent>
@@ -51,7 +51,7 @@
 		<!-- meta -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<refset-query-interface-app-port>8080</refset-query-interface-app-port>
+		<snomed-query-interface-app-port>8080</snomed-query-interface-app-port>
 	
 	
 	
@@ -528,12 +528,12 @@
 				<version>2.1</version>
 				<configuration>
 					<!-- http port -->
-					<port>${refset-query-interface-app-port}</port>
+					<port>${snomed-query-interface-app-port}</port>
 					<path>/</path>
 					<systemProperties>
-						<appserver.base>${project.build.directory}/refset-qi-base</appserver.base>
-						<appserver.home>${project.build.directory}/refset-qi-home</appserver.home>
-						<derby.system.home>${project.build.directory}/refset-qi-base/logs</derby.system.home>
+						<appserver.base>${project.build.directory}/snomed-qi-base</appserver.base>
+						<appserver.home>${project.build.directory}/snomed-qi-home</appserver.home>
+						<derby.system.home>${project.build.directory}/snomed-qi-base/logs</derby.system.home>
 						<java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
 						<env>dev</env>
 					</systemProperties>

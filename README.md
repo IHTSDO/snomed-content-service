@@ -8,11 +8,11 @@ As such this is offered as an interesting piece of code and is not a supported p
 
 This can be installed using out ansible role found at: 
 
-https://github.com/IHTSDO/ihtsdo-ansible/tree/master/roles/IHTSDO.refsetService
+https://github.com/IHTSDO/ihtsdo-ansible/tree/master/roles/IHTSDO.graph_db
 
 Which is usually run via:
 
-https://github.com/IHTSDO/ihtsdo-ansible/blob/master/otf_refsetService.yml
+https://github.com/IHTSDO/ihtsdo-ansible/blob/master/graphService.yml
 
 Following are command and program for various data loading needs. In order to make it repeatable I will need make some tweaks so that we do not duplicate data. Also db connection properties file I can publish from container project as they being used by multiple projects.
 
