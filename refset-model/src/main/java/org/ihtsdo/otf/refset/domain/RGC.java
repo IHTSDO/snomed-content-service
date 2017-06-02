@@ -4,8 +4,7 @@
 package org.ihtsdo.otf.refset.domain;
 
 /**
- * @author Episteme Partners
- *
+ *These constant are mapped to Refset schema
  */
 public final class RGC {
 
@@ -38,9 +37,66 @@ public final class RGC {
 	public static final String PARENT_ID = "parentId";
 	
 	public static final String LOCK = "lock"; //used in write lock. This is to handle long running transaction.
-
+	
 
 	
+	//new field defined post MVP
+	
+	/**
+	 * Use case of this refset
+	 */
+	public static final String SCOPE = "scope";
+	
+	/**
+	 * refset contributing organization
+	 */
+	public static final String  CONTRIBUTING_ORG = "contributingOrganization";
+	
+	
+	/**Country of Origin for this refset
+	 * 
+	 */
+	public static final String ORIGIN_COUNTRY = "originCountry";
+	
+	/**SNOMED®CT release date
+	 * 
+	 */
+	public static final String SNOMED_CT_VERSION = "snomedCTVersion";
+	
+	/**
+	 * SNOMED®CT extension
+	 */
+	public static final String SNOMED_CT_EXT = "snomedCTExtension";
+	
+	/**
+	 * Details implementation notes
+	 */
+	public static final String IMPLEMENTATION_DETAILS = "implementationDetails";
+	
+	
+	public static final String CLINICAL_DOMAIN = "clinicalDomain";
+
+	public static final String VIEW_COUNT = "viewCount";
+	
+	public static final String DOWNLOAD_COUNT = "downloadCount";
+
+	//field for user schema
+	
+	public static final String USER_NAME = "userName";
+
+	//used when refset doesn't not have members and available on http url. see https://jira.ihtsdotools.org/browse/RMT-321
+	public static final String EXT_URL = "externalUrl";
+	public static final String EXT_CONTACT = "externalContact";
+	
+	public static final String CLINICAL_DOMAIN_CODE = "clinicalDomainCode";
+
+	public static final String SNOMED_CT_EXT_NS = "snomedCTExtensionNs";
+	
+	public static final String ORIGIN_COUNTRY_CODE = "originCountryCode";
+
+	public static final String REFSET_STATUS = "refsetStatus";
+
+	public static final String VERSION = "version";
 
 
 

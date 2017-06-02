@@ -7,14 +7,15 @@ import static org.ihtsdo.otf.refset.domain.RGC.ID;
 import static org.ihtsdo.otf.refset.domain.RGC.PUBLISHED;
 import static org.ihtsdo.otf.refset.domain.RGC.REFERENCE_COMPONENT_ID;
 import static org.ihtsdo.otf.refset.domain.RGC.TYPE;
+import static org.ihtsdo.otf.refset.domain.RGC.VERSION;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.Resource;
 
-import org.ihtsdo.otf.refset.domain.Member;
-import org.ihtsdo.otf.refset.domain.Refset;
+import org.ihtsdo.otf.refset.domain.MemberDTO;
+import org.ihtsdo.otf.refset.domain.RefsetDTO;
 import org.ihtsdo.otf.refset.exception.EntityNotFoundException;
 import org.ihtsdo.otf.refset.graph.RefsetGraphAccessException;
 import org.ihtsdo.otf.refset.graph.RefsetGraphFactory;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
 import com.thinkaurelius.titan.core.TitanGraph;
+import com.thinkaurelius.titan.core.TitanGraphQuery;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
@@ -50,16 +52,27 @@ public class RefsetExportGAO {
 	 * @return {@link Refset}
 	 * @throws RefsetGraphAccessException
 	 */
-	public Refset getRefset(String id) throws RefsetGraphAccessException, EntityNotFoundException {
+	public RefsetDTO getRefset(String id, Integer version) throws RefsetGraphAccessException, EntityNotFoundException {
 				
 		LOGGER.debug("Geting member data for export for given refset id {} ", id);
 		TitanGraph g = null;
-		Refset r = null;
+		RefsetDTO r = null;
 		try {
 			
 			g = rgFactory.getReadOnlyGraph();
+			TitanGraphQuery query = g.query().has(ID, id);
 			
-			Iterable<Vertex> vRs = g.query().has(ID, id).has(TYPE, VertexType.refset.toString()).vertices();
+			if (version > 0) {
+				
+				query.has(VERSION, version);
+				
+			} else {
+				
+				query.has(TYPE, VertexType.refset.toString());
+			}
+			
+			Iterable<Vertex> vRs = query.vertices();
+			
 			if(!vRs.iterator().hasNext()) {
 				
 				throw new EntityNotFoundException("No Refset available for given refset id");
@@ -67,13 +80,12 @@ public class RefsetExportGAO {
 			
 			Vertex vR = vRs.iterator().next();
 			r = RefsetConvertor.getRefset(fgf.create(g).frame(vR, GRefset.class));
-			r.setMembers(new ArrayList<Member>());
+			r.setMembers(new ArrayList<MemberDTO>());
 			/*export required all member which are not published yet*/
 			GremlinPipeline<Vertex, Vertex> pipe = new GremlinPipeline<Vertex, Vertex>(g);
 			
 			pipe.start(vR).inE(EdgeLabel.members.toString()).outV()
-				.has(PUBLISHED, 0)
-				.has(TYPE, VertexType.member.toString());
+				.has(PUBLISHED, 0);
 			
 			List<Vertex> vMs = pipe.toList();
 
@@ -94,7 +106,7 @@ public class RefsetExportGAO {
 					
 					if ( edge.getPropertyKeys().contains(REFERENCE_COMPONENT_ID) ) {
 						
-						Member m = RefsetConvertor.getMember(vM);
+						MemberDTO m = RefsetConvertor.getMember(vM);
 
 						String referenceComponentId = edge.getProperty(REFERENCE_COMPONENT_ID);
 						m.setReferencedComponentId(referenceComponentId);
@@ -108,8 +120,8 @@ public class RefsetExportGAO {
 						Iterable<Vertex> vHms = mPipe.toList();
 						for (Vertex vHm : vHms) {
 						
-							Member hm = RefsetConvertor.getMember(vHm);
-							Member merged = merge(hm, m);
+							MemberDTO hm = RefsetConvertor.getMember(vHm);
+							MemberDTO merged = merge(hm, m);
 							LOGGER.debug("Adding historical state of member & its detail {} ", merged);
 							if (!r.getMembers().contains(merged)) {
 								
@@ -158,7 +170,7 @@ public class RefsetExportGAO {
 	 * @param hm
 	 * @param m
 	 */
-	private Member merge(Member hm, Member m) {
+	private MemberDTO merge(MemberDTO hm, MemberDTO m) {
 		
 		if(StringUtils.isEmpty(hm.getModuleId())) {
 			

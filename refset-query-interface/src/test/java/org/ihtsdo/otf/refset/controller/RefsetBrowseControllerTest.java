@@ -13,10 +13,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 
-import org.ihtsdo.otf.refset.domain.Refset;
+import org.ihtsdo.otf.refset.api.browse.RefsetBrowseController;
+import org.ihtsdo.otf.refset.common.SearchCriteria;
+import org.ihtsdo.otf.refset.common.SearchField;
+import org.ihtsdo.otf.refset.domain.RefsetDTO;
 import org.ihtsdo.otf.refset.exception.RefsetServiceException;
-import org.ihtsdo.otf.refset.service.RefsetBrowseService;
 import org.ihtsdo.otf.refset.service.RefsetBrowseServiceStubData;
+import org.ihtsdo.otf.refset.service.browse.RefsetBrowseService;
 import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Before;
@@ -43,10 +46,10 @@ public class RefsetBrowseControllerTest {
     @Mock
 	private RefsetBrowseService service;
 	
-	private List<Refset> refsets;
+	private List<RefsetDTO> refsets;
 	
 	@Mock
-	private Refset refset;
+	private RefsetDTO refset;
 	
 	@InjectMocks
 	private RefsetBrowseController controller;
@@ -69,7 +72,11 @@ public class RefsetBrowseControllerTest {
 	    ctxa = new FileSystemXmlApplicationContext("src/main/webapp/WEB-INF/spring/appServlet/spring-refset-browse-service-stub-data.xml");
 	    RefsetBrowseServiceStubData data = ctxa.getBean("refsetBrosweServiceStubData", RefsetBrowseServiceStubData.class);
 	    refsets = data.getRefSets();
-		when(service.getRefsets(1, 10, false)).thenReturn(refsets.subList(0, 10));
+	    SearchCriteria criteria = new SearchCriteria();
+	    criteria.setFrom(1);
+	    criteria.setTo(10);
+	    criteria.addSearchField(SearchField.published, false);
+		when(service.getRefsets(criteria)).thenReturn(refsets.subList(0, 10));
 		
 		when(refset.getUuid()).thenReturn("Junit_1");
 		when(refset.getDescription()).thenReturn("Junit Refset"); 
@@ -92,13 +99,13 @@ public class RefsetBrowseControllerTest {
 	}
 
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetBrowseController#getRefsets(int, int)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.browse.RefsetBrowseController#getRefsets(int, int)}.
 	 * @throws Exception 
 	 */
 	@Test
 	public void testGetRefsets() throws Exception {
 		
-		this.mockMvc.perform(get("/v1.0/refsets").accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(get("/v1/refsets").accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -106,42 +113,42 @@ public class RefsetBrowseControllerTest {
 	}
 	
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetBrowseController#getRefsets(int, int)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.browse.RefsetBrowseController#getRefsets(int, int)}.
 	 * @throws Exception 
 	 */
 	@Test(expected = Exception.class)
 	public void testGetRefsetsError() throws Exception {
 		
-		doThrow(new RefsetServiceException()).when(service).getRefsets(anyInt(), anyInt(), anyBoolean());
+		doThrow(new RefsetServiceException()).when(service).getRefsets(any(SearchCriteria.class));
 
 		
-		this.mockMvc.perform(get("/v1.0/refsets").accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(get("/v1/refsets").accept(MediaType.APPLICATION_JSON))
         .andDo(print());
 	}
 	
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetBrowseController#getRefsets(int, int)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.browse.RefsetBrowseController#getRefsets(int, int)}.
 	 * @throws Exception 
 	 */
 	@Test(expected = Exception.class)
 	public void testGetRefsetsMetaDataOnError() throws Exception {
 		
-		doThrow(new RefsetServiceException("Junit Error Checking")).when(service).getRefsets(anyInt(), anyInt(), anyBoolean());
+		doThrow(new RefsetServiceException("Junit Error Checking")).when(service).getRefsets(any(SearchCriteria.class));
 
 		
-		this.mockMvc.perform(get("/v1.0/refsets").accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(get("/v1/refsets").accept(MediaType.APPLICATION_JSON))
         .andDo(print());
 		
 	}
 	
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetBrowseController#getRefsets(int, int)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.browse.RefsetBrowseController#getRefsets(int, int)}.
 	 * @throws Exception 
 	 */
 	@Test
 	public void testGetRefsetsMetaData() throws Exception {
 		
-		this.mockMvc.perform(get("/v1.0/refsets").accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(get("/v1/refsets").accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -152,16 +159,16 @@ public class RefsetBrowseControllerTest {
 	}
 
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetBrowseController#getRefsetDetails(java.lang.String)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.browse.RefsetBrowseController#getRefsetDetails(java.lang.String)}.
 	 * @throws Exception 
 	 */
 	@Test(expected = Exception.class)
 	public void testGetRefsetDetailsError() throws Exception {
 		
-	    doThrow(new RefsetServiceException("junit Error Checking")).when(service).getRefset(anyString());
+	    doThrow(new RefsetServiceException("junit Error Checking")).when(service).getRefset(anyString(), 0, 1, -1);
 
 		this.mockMvc.perform(
-				get("/v1.0/refsets/{refSetId}", "0")
+				get("/v1/refsets/{refSetId}", "0")
 				.accept(MediaType.APPLICATION_JSON))
         .andDo(print());
 

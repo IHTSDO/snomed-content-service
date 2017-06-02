@@ -12,11 +12,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
-import org.ihtsdo.otf.refset.domain.Refset;
+import org.ihtsdo.otf.refset.api.authoring.RefsetAuthoringController;
+import org.ihtsdo.otf.refset.domain.RefsetDTO;
 import org.ihtsdo.otf.refset.exception.EntityNotFoundException;
 import org.ihtsdo.otf.refset.exception.RefsetServiceException;
-import org.ihtsdo.otf.refset.service.RefsetAuthoringService;
-import org.ihtsdo.otf.refset.service.RefsetBrowseService;
+import org.ihtsdo.otf.refset.service.authoring.RefsetAuthoringService;
+import org.ihtsdo.otf.refset.service.browse.RefsetBrowseService;
 import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Before;
@@ -41,7 +42,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * @author Episteme Partners
  *
  */
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -81,7 +81,7 @@ public class RefsetAuthoringControllerTest {
 	private RefsetAuthoringService aService;
 	
 	@Mock
-	private Refset refset;
+	private RefsetDTO refset;
 	
 	@InjectMocks
 	private RefsetAuthoringController controller;
@@ -109,8 +109,8 @@ public class RefsetAuthoringControllerTest {
 		when(refset.getCreatedBy()).thenReturn("Junit author");
 
 	    
-		when(aService.addRefset(any(Refset.class))).thenReturn("1000003");
-		when(aService.updateRefset(any(Refset.class))).thenReturn("1000003");
+		when(aService.addRefset(any(RefsetDTO.class))).thenReturn("1000003");
+		when(aService.updateRefset(any(RefsetDTO.class))).thenReturn("1000003");
 
 		
 	}
@@ -133,13 +133,13 @@ public class RefsetAuthoringControllerTest {
 	
 	
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetAuthoringController#addRefset(org.ihtsdo.otf.refset.domain.Refset)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.authoring.RefsetAuthoringController#addRefset(org.ihtsdo.otf.refset.domain.Refset)}.
 	 * @throws Exception 
 	 */
 	@Test
 	public void testAddRefsetNotACorrectRole() throws Exception {
 		
-		this.mockMvc.perform(post("/v1.0/refsets/new").contentType(MediaType.APPLICATION_JSON).content(REFSET).accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(post("/v1/refsets/new").contentType(MediaType.APPLICATION_JSON).content(REFSET).accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().is4xxClientError());//TODO isCreated
         //.andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -149,13 +149,13 @@ public class RefsetAuthoringControllerTest {
 	
 
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetAuthoringController#addRefset(org.ihtsdo.otf.refset.domain.Refset)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.authoring.RefsetAuthoringController#addRefset(org.ihtsdo.otf.refset.domain.Refset)}.
 	 * @throws Exception 
 	 */
 	@Test
 	public void testAddRefset() throws Exception {
 		
-		this.mockMvc.perform(post("/v1.0/refsets/new").contentType(MediaType.APPLICATION_JSON).content(REFSET).accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(post("/v1/refsets/new").contentType(MediaType.APPLICATION_JSON).content(REFSET).accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().is4xxClientError());
         //.andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -164,13 +164,13 @@ public class RefsetAuthoringControllerTest {
 	}
 	
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetAuthoringController#updateRefset(org.ihtsdo.otf.refset.domain.Refset)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.authoring.RefsetAuthoringController#updateRefset(org.ihtsdo.otf.refset.domain.Refset)}.
 	 * @throws Exception 
 	 */
 	@Test
 	public void testUpdateRefset() throws Exception {
 		
-		this.mockMvc.perform(post("/v1.0/refsets/update").contentType(MediaType.APPLICATION_JSON).content(UPDATE_REFSET).accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(post("/v1/refsets/update").contentType(MediaType.APPLICATION_JSON).content(UPDATE_REFSET).accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().is4xxClientError());///TODO fix isOK
         //.andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -179,15 +179,15 @@ public class RefsetAuthoringControllerTest {
 	}
 	
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetAuthoringController#updateRefset(org.ihtsdo.otf.refset.domain.Refset)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.authoring.RefsetAuthoringController#updateRefset(org.ihtsdo.otf.refset.domain.Refset)}.
 	 * @throws Exception 
 	 */
 	@Test
 	public void testUpdateRefsetException() throws Exception {
 		
-		doThrow(new RefsetServiceException("Can not add junit driven refset")).when(aService).updateRefset(any(Refset.class));
+		doThrow(new RefsetServiceException("Can not add junit driven refset")).when(aService).updateRefset(any(RefsetDTO.class));
 
-		this.mockMvc.perform(post("/v1.0/refsets/update").contentType(MediaType.APPLICATION_JSON).content(UPDATE_REFSET).accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(post("/v1/refsets/update").contentType(MediaType.APPLICATION_JSON).content(UPDATE_REFSET).accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().is4xxClientError());///TODO fix isOK
         //.andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -196,15 +196,15 @@ public class RefsetAuthoringControllerTest {
 	}
 	
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetAuthoringController#updateRefset(org.ihtsdo.otf.refset.domain.Refset)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.authoring.RefsetAuthoringController#updateRefset(org.ihtsdo.otf.refset.domain.Refset)}.
 	 * @throws Exception 
 	 */
 	@Test
 	public void testUpdateRefsetEntityNotFoundException() throws Exception {
 		
-		doThrow(new EntityNotFoundException("Can not add junit driven refset")).when(aService).updateRefset(any(Refset.class));
+		doThrow(new EntityNotFoundException("Can not add junit driven refset")).when(aService).updateRefset(any(RefsetDTO.class));
 
-		this.mockMvc.perform(post("/v1.0/refsets/update").contentType(MediaType.APPLICATION_JSON).content(UPDATE_REFSET).accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(post("/v1/refsets/update").contentType(MediaType.APPLICATION_JSON).content(UPDATE_REFSET).accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().is4xxClientError());///TODO fix isOK
         //.andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -213,15 +213,15 @@ public class RefsetAuthoringControllerTest {
 	}
 	
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetAuthoringController#addRefset(org.ihtsdo.otf.refset.domain.Refset)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.authoring.RefsetAuthoringController#addRefset(org.ihtsdo.otf.refset.domain.Refset)}.
 	 * @throws Exception 
 	 */
 	@Test
 	public void testAddRefsetException() throws Exception {
 		
-		doThrow(new RefsetServiceException("Can not add junit driven refset")).when(aService).addRefset(any(Refset.class));
+		doThrow(new RefsetServiceException("Can not add junit driven refset")).when(aService).addRefset(any(RefsetDTO.class));
 
-		this.mockMvc.perform(post("/v1.0/refsets/new").contentType(MediaType.APPLICATION_JSON).content(REFSET).accept(MediaType.APPLICATION_JSON))
+		this.mockMvc.perform(post("/v1/refsets/new").contentType(MediaType.APPLICATION_JSON).content(REFSET).accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().is4xxClientError());//TODO fix isOK
        // .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -230,7 +230,7 @@ public class RefsetAuthoringControllerTest {
 	}
 
 	/**
-	 * Test method for {@link org.ihtsdo.otf.refset.controller.RefsetAuthoringController#addMember(java.lang.String, org.ihtsdo.otf.refset.domain.Member)}.
+	 * Test method for {@link org.ihtsdo.otf.refset.api.authoring.RefsetAuthoringController#addMember(java.lang.String, org.ihtsdo.otf.refset.domain.Member)}.
 	 */
 	@Test
 	public void testAddMember() {

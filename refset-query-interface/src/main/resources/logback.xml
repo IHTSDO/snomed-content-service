@@ -61,7 +61,7 @@
 	<logger name="org.springframework.security" level="info" />
 
 	<logger name="org.springframework.mail" level="debug" />
-	<logger name="javax.mail" level="debug" />
+	<logger name="javax.mail" level="error" />
 
 	<logger name="com.mangofactory" level="error" />
 

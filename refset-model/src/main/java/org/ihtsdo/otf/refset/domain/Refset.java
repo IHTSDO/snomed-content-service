@@ -7,8 +7,11 @@ import java.util.Collections;
 import java.util.List;
 
 import org.joda.time.DateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
- * @author Episteme Partners
+ * @author 
  *
  */
 public class Refset extends BaseObj implements Comparable<Refset> {
@@ -16,9 +19,7 @@ public class Refset extends BaseObj implements Comparable<Refset> {
 
 		
 	private String type;
-	
-	private List<Member> members;
-	
+		
 	private String typeId;
 	
 	private String superRefsetTypeId;
@@ -27,12 +28,126 @@ public class Refset extends BaseObj implements Comparable<Refset> {
 	
 	private DateTime expectedReleaseDate;
 	
-	private long totalNoOfMembers;
 	
 	private DateTime earliestEffectiveTime;
 	
 	private DateTime latestEffectiveTime;
 	
+	
+	//used when refset doesn't not have members and available on http url. see https://jira.ihtsdotools.org/browse/RMT-321
+	private String externalUrl;
+	private String externalContact;
+	
+	@JsonIgnore
+	private List<Member> memberList;
+	
+	private String status;
+	private String sctId;
+	protected Integer version;
+
+	
+	/**
+	 * @return the version
+	 */
+	public Integer getVersion() {
+		return version;
+	}
+	/**
+	 * @param version the version to set
+	 */
+	public void setVersion(Integer version) {
+		this.version = version;
+	}
+
+	/**
+	 * @return the status
+	 */
+	public String getStatus() {
+		return status;
+	}
+	/**
+	 * @param status the status to set
+	 */
+	public void setStatus(String status) {
+		this.status = status;
+	}
+	
+	/**
+	 * @return the sctId
+	 */
+	public String getSctId() {
+		return sctId;
+	}
+	/**
+	 * @param sctId the sctId to set
+	 */
+	public void setSctId(String sctId) {
+		this.sctId = sctId;
+	}
+	
+	/**
+	 * @return the members
+	 */
+	@JsonIgnore
+	public List<Member> getMemberList() {
+		
+		if(memberList == null) {
+			
+			memberList = Collections.emptyList();
+			
+		}
+		return memberList;
+	}
+
+	/**
+	 * @param members the members to set
+	 */
+	@JsonIgnore
+	public void setMemberList(List<Member> memberList) {
+		this.memberList = memberList;
+	}
+
+
+	
+	/**
+	 * Use case of this refset
+	 */
+	private String scope;
+	
+	/**
+	 * refset contributing organization
+	 */
+	private String contributingOrganization;
+	
+	
+	/**Country of Origin for this refset
+	 * 
+	 */
+	private String originCountry;
+	
+	/**SNOMED®CT release date
+	 * 
+	 */
+	private String snomedCTVersion;
+	
+	/**
+	 * SNOMED®CT extension
+	 */
+	private String snomedCTExtension;
+	
+	/**
+	 * Details implementation notes
+	 */
+	private String implementationDetails;
+	
+	private String clinicalDomain;
+	
+	private String clinicalDomainCode;
+
+	private String snomedCTExtensionNs;
+	
+	private String originCountryCode;
+
 	
 	/**
 	 * @return the typeId
@@ -78,26 +193,6 @@ public class Refset extends BaseObj implements Comparable<Refset> {
 		this.type = type;
 	}
 
-	/**
-	 * @return the members
-	 */
-	public List<Member> getMembers() {
-		
-		if(members == null) {
-			
-			members = Collections.emptyList();
-			
-		}
-		return members;
-	}
-
-	/**
-	 * @param members the members to set
-	 */
-	public void setMembers(List<Member> members) {
-		this.members = members;
-	}
-
 	
    @Override 
    public boolean equals(Object input) {
@@ -124,11 +219,17 @@ public class Refset extends BaseObj implements Comparable<Refset> {
    public String toString() {
 	   
 	   return String.format( "Refset [id - %s, created - %s, createdBy - %s, description - %s, "
-	   		+ "effectiveTime - %s,  isPublished - %s, languageCode - %s, members - %s, moduleId - %s, publishedDate - %s "
+	   		+ "effectiveTime - %s,  isPublished - %s, languageCode - %s, moduleId - %s, publishedDate - %s "
 	   		+ "superRefsetTypeId - %s, type - %s, typeId - %s, description - %s, latestEffectiveTime - %s,"
-	   		+ " earliestEffectiveTime -%s ]", this.uuid, this.created, this.createdBy, this.description,
-	   		this.effectiveTime, this.published, this.languageCode, this.members, this.moduleId, this.publishedDate,
-	   		this.superRefsetTypeId, this.type, this.typeId, this.description, this.earliestEffectiveTime, this.latestEffectiveTime );
+	   		+ " earliestEffectiveTime -%s, scope - %s, snomedCTExtension - %s, snomedCTVersion - %s,"
+	   		+ " contributingOrganization - %s, originCountry - %s, implementationDetails - %s, clinicalDomain - %s,"
+	   		+ " clinicalDomainCode - %s, snomedCTExtensionNs - %s, originCountryCode - %s, externalUrl - %s, externalContact - %s "
+	   		+ "]", this.uuid, this.created, this.createdBy, this.description, this.effectiveTime, this.published,
+	   		this.languageCode, this.moduleId, this.publishedDate, this.superRefsetTypeId, this.type,
+	   		this.typeId, this.description, this.earliestEffectiveTime, this.latestEffectiveTime, this.scope,
+	   		this.snomedCTExtension, this.snomedCTVersion, this.contributingOrganization, this.originCountry,
+	   		this.implementationDetails, this.clinicalDomain, this.clinicalDomainCode, this.snomedCTExtensionNs,
+	   		this.originCountryCode, this.externalUrl, this.externalContact);
    }
 
 
@@ -160,19 +261,7 @@ public class Refset extends BaseObj implements Comparable<Refset> {
 		this.expectedReleaseDate = expectedReleaseDate;
 	}
 
-	/**
-	 * @return the totalNoOfMembers
-	 */
-	public long getTotalNoOfMembers() {
-		return totalNoOfMembers;
-	}
-
-	/**
-	 * @param totalNoOfMembers the totalNoOfMembers to set
-	 */
-	public void setTotalNoOfMembers(long totalNoOfMembers) {
-		this.totalNoOfMembers = totalNoOfMembers;
-	}
+	
 
 	/* (non-Javadoc)
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
@@ -217,5 +306,176 @@ public class Refset extends BaseObj implements Comparable<Refset> {
 		this.latestEffectiveTime = latestEffectiveTime;
 	}
 
+	/**
+	 * @return the scope
+	 */
+	public String getScope() {
+		return scope;
+	}
+
+	/**
+	 * @param scope the scope to set
+	 */
+	public void setScope(String scope) {
+		this.scope = scope;
+	}
+
+	/**
+	 * @return the contributingOrganization
+	 */
+	public String getContributingOrganization() {
+		return contributingOrganization;
+	}
+
+	/**
+	 * @param contributingOrganization the contributingOrganization to set
+	 */
+	public void setContributingOrganization(String contributingOrganization) {
+		this.contributingOrganization = contributingOrganization;
+	}
+
+	/**
+	 * @return the originCountry
+	 */
+	public String getOriginCountry() {
+		return originCountry;
+	}
+
+	/**
+	 * @param originCountry the originCountry to set
+	 */
+	public void setOriginCountry(String originCountry) {
+		this.originCountry = originCountry;
+	}
+
+	/**
+	 * @return the snomedCTVersion
+	 */
+	public String getSnomedCTVersion() {
+		return snomedCTVersion;
+	}
+
+	/**
+	 * @param snomedCTVersion the snomedCTVersion to set
+	 */
+	public void setSnomedCTVersion(String snomedCTVersion) {
+		this.snomedCTVersion = snomedCTVersion;
+	}
+
+	/**
+	 * @return the snomedCTExtension
+	 */
+	public String getSnomedCTExtension() {
+		return snomedCTExtension;
+	}
+
+	/**
+	 * @param snomedCTExtension the snomedCTExtension to set
+	 */
+	public void setSnomedCTExtension(String snomedCTExtension) {
+		this.snomedCTExtension = snomedCTExtension;
+	}
+
+	/**
+	 * @return the implementationDetails
+	 */
+	public String getImplementationDetails() {
+		return implementationDetails;
+	}
+
+	/**
+	 * @param implementationDetails the implementationDetails to set
+	 */
+	public void setImplementationDetails(String implementationDetails) {
+		this.implementationDetails = implementationDetails;
+	}
+
+	/**
+	 * @return the clinicalDomain
+	 */
+	public String getClinicalDomain() {
+		return clinicalDomain;
+	}
+
+	/**
+	 * @param clinicalDomain the clinicalDomain to set
+	 */
+	public void setClinicalDomain(String clinicalDomain) {
+		this.clinicalDomain = clinicalDomain;
+	}
+
+	
+
+	/**
+	 * @return the externalUrl
+	 */
+	public String getExternalUrl() {
+		return externalUrl;
+	}
+
+	/**
+	 * @param externalUrl the externalUrl to set
+	 */
+	public void setExternalUrl(String externalUrl) {
+		this.externalUrl = externalUrl;
+	}
+
+	/**
+	 * @return the externalContact
+	 */
+	public String getExternalContact() {
+		return externalContact;
+	}
+
+	/**
+	 * @param externalContact the externalContact to set
+	 */
+	public void setExternalContact(String externalContact) {
+		this.externalContact = externalContact;
+	}
+
+	/**
+	 * @return the clinicalDomainCode
+	 */
+	public String getClinicalDomainCode() {
+		return clinicalDomainCode;
+	}
+
+	/**
+	 * @param clinicalDomainCode the clinicalDomainCode to set
+	 */
+	public void setClinicalDomainCode(String clinicalDomainCode) {
+		this.clinicalDomainCode = clinicalDomainCode;
+	}
+
+	/**
+	 * @return the snomedCTExtensionNs
+	 */
+	public String getSnomedCTExtensionNs() {
+		return snomedCTExtensionNs;
+	}
+
+	/**
+	 * @param snomedCTExtensionNs the snomedCTExtensionNs to set
+	 */
+	public void setSnomedCTExtensionNs(String snomedCTExtensionNs) {
+		this.snomedCTExtensionNs = snomedCTExtensionNs;
+	}
+
+	/**
+	 * @return the originCountryCode
+	 */
+	public String getOriginCountryCode() {
+		return originCountryCode;
+	}
+
+	/**
+	 * @param originCountryCode the originCountryCode to set
+	 */
+	public void setOriginCountryCode(String originCountryCode) {
+		this.originCountryCode = originCountryCode;
+	}
+
+	
 
 }

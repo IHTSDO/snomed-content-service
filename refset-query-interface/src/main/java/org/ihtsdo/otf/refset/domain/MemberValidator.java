@@ -27,8 +27,8 @@ public class MemberValidator implements Validator {
 	 */
 	@Override
 	public boolean supports(Class<?> arg0) {
-		// TODO Auto-generated method stub
-		return Member.class.equals(arg0);
+
+		return MemberDTO.class.equals(arg0);
 	}
 
 	/* (non-Javadoc)

@@ -3,37 +3,16 @@
  */
 package org.ihtsdo.otf.refset.graph.gao;
 
-import static org.ihtsdo.otf.refset.domain.RGC.ACTIVE;
-import static org.ihtsdo.otf.refset.domain.RGC.CREATED;
-import static org.ihtsdo.otf.refset.domain.RGC.CREATED_BY;
-import static org.ihtsdo.otf.refset.domain.RGC.DESC;
-import static org.ihtsdo.otf.refset.domain.RGC.EFFECTIVE_DATE;
-import static org.ihtsdo.otf.refset.domain.RGC.EXPECTED_PUBLISH_DATE;
-import static org.ihtsdo.otf.refset.domain.RGC.ID;
-import static org.ihtsdo.otf.refset.domain.RGC.LANG_CODE;
-import static org.ihtsdo.otf.refset.domain.RGC.MEMBER_TYPE_ID;
-import static org.ihtsdo.otf.refset.domain.RGC.MODIFIED_BY;
-import static org.ihtsdo.otf.refset.domain.RGC.MODIFIED_DATE;
-import static org.ihtsdo.otf.refset.domain.RGC.MODULE_ID;
-import static org.ihtsdo.otf.refset.domain.RGC.PUBLISHED;
-import static org.ihtsdo.otf.refset.domain.RGC.PUBLISHED_DATE;
-import static org.ihtsdo.otf.refset.domain.RGC.REFERENCE_COMPONENT_ID;
-import static org.ihtsdo.otf.refset.domain.RGC.SCTID;
-import static org.ihtsdo.otf.refset.domain.RGC.SUPER_REFSET_TYPE_ID;
-import static org.ihtsdo.otf.refset.domain.RGC.TYPE;
-import static org.ihtsdo.otf.refset.domain.RGC.TYPE_ID;
-import static org.ihtsdo.otf.refset.domain.RGC.END;
-import static org.ihtsdo.otf.refset.domain.RGC.E_EFFECTIVE_TIME;
-import static org.ihtsdo.otf.refset.domain.RGC.L_EFFECTIVE_TIME;
+import static org.ihtsdo.otf.refset.domain.RGC.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import org.ihtsdo.otf.refset.domain.Member;
+import org.ihtsdo.otf.refset.domain.MemberDTO;
 import org.ihtsdo.otf.refset.domain.MetaData;
-import org.ihtsdo.otf.refset.domain.Refset;
+import org.ihtsdo.otf.refset.domain.RefsetDTO;
 import org.ihtsdo.otf.refset.graph.schema.GRefset;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -58,9 +37,9 @@ public class RefsetConvertor {
 	 * @param vs.
 	 * @return
 	 */
-	public static List<Refset> getRefsets(Iterable<GRefset> vs) {
+	public static List<RefsetDTO> getRefsets(Iterable<GRefset> vs) {
 
-		List<Refset> refsets = new ArrayList<Refset>();
+		List<RefsetDTO> refsets = new ArrayList<RefsetDTO>();
 
 		for (GRefset gr : vs) {
 			
@@ -68,16 +47,13 @@ public class RefsetConvertor {
 			
 			if (!StringUtils.isEmpty(gr.getId()) && keys.contains(DESC) ) {
 				
-				Refset r = getRefset(gr);
+				RefsetDTO r = getRefset(gr);
 
 				refsets.add(r);
 				
 			}
 			
 		}
-		Collections.sort(refsets);
-		Collections.reverse(refsets);
-
 		return Collections.unmodifiableList(refsets);
 	}
 
@@ -86,13 +62,13 @@ public class RefsetConvertor {
 	 * @param v
 	 * @return
 	 */
-	public static Refset convert2Refset(GRefset vR) {
+	public static RefsetDTO convert2Refset(GRefset vR) {
 
 
 		
 		LOGGER.debug("convert2Refsets {}", vR);
 
-		Refset r = getRefset(vR);
+		RefsetDTO r = getRefset(vR);
 
 		Iterable<Edge> eRs = vR.asVertex().getEdges(Direction.IN, "members");
 		r.setMembers(getMembers(eRs));
@@ -108,9 +84,9 @@ public class RefsetConvertor {
 	 * @param asVertex
 	 * @return
 	 */
-	protected static Refset getRefset(GRefset vR) {
+	protected static RefsetDTO getRefset(GRefset vR) {
 		
-		Refset r = new Refset();
+		RefsetDTO r = new RefsetDTO();
 		Set<String> keys = vR.asVertex().getPropertyKeys();
 		
 		if ( keys.contains(CREATED) ) {
@@ -232,14 +208,92 @@ public class RefsetConvertor {
 			r.setLatestEffectiveTime(new DateTime(vR.getLatestEffectiveTime()));
 
 		}
+		
+		//new fields post MVP
+		if ( keys.contains(SCOPE) ) {
+					
+			r.setScope(vR.getScope());
+		
+		}
+		
+		if ( keys.contains(SNOMED_CT_EXT) ) {
+			
+			r.setSnomedCTExtension(vR.getSnomedCTExtension());
+		
+		}
+		
+		if ( keys.contains(SNOMED_CT_VERSION) ) {
+			
+			r.setSnomedCTVersion(vR.getSnomedCTVersion());
+		
+		}
+		
+		if ( keys.contains(ORIGIN_COUNTRY) ) {
+			
+			r.setOriginCountry(vR.getOriginCountry());
+		
+		}
+		
+		if ( keys.contains(IMPLEMENTATION_DETAILS) ) {
+			
+			r.setImplementationDetails(vR.getImplementationDetails());
+		
+		}
+		
+		if ( keys.contains(CONTRIBUTING_ORG) ) {
+			
+			r.setContributingOrganization(vR.getContributingOrganization());
+		
+		}
+
+		if ( keys.contains(CLINICAL_DOMAIN) ) {
+			
+			r.setClinicalDomain(vR.getClinicalDomain());
+		
+		}
+		
+		if ( keys.contains(VIEW_COUNT) ) {
+					
+			r.getMatrix().setViews(vR.getViews());
+				
+		}
+		
+		if ( keys.contains(DOWNLOAD_COUNT) ) {
+			
+			r.getMatrix().setDownloads(vR.getDownloads());
+		
+		}
+		
+		if ( keys.contains(EXT_URL) ) {
+			
+			r.setExternalUrl(vR.getExternalUrl());
+		
+		}
+		
+		if ( keys.contains(EXT_CONTACT) ) {
+			
+			r.setExternalContact(vR.getExternalContact());
+		
+		}
+		if ( keys.contains(REFSET_STATUS) ) {
+			
+			r.setStatus(vR.getStatus());
+		
+		}
+
+		if ( keys.contains(VERSION) ) {
+			
+			r.setVersion(vR.getVersion());
+		
+		}
 
 		return r;
 	}
 
 
-	protected static List<Member> getMembers(Iterable<Edge> eRs ) {
+	protected static List<MemberDTO> getMembers(Iterable<Edge> eRs ) {
 		
-		List<Member> members = new ArrayList<Member>();
+		List<MemberDTO> members = new ArrayList<MemberDTO>();
 
 		if(eRs != null) {
 			
@@ -265,7 +319,7 @@ public class RefsetConvertor {
 				
 				Vertex vM = eR.getVertex(Direction.OUT);
 				
-				Member m = getMember(vM);
+				MemberDTO m = getMember(vM);
 				
 				Set<String> eKeys = eR.getPropertyKeys();
 				if ( eKeys.contains(REFERENCE_COMPONENT_ID) ) {
@@ -332,11 +386,11 @@ public class RefsetConvertor {
 	/**
 	 * @param vM
 	 */
-	protected static Member getMember(Vertex vM) {
-		// TODO Auto-generated method stub
+	protected static MemberDTO getMember(Vertex vM) {
+
 		Set<String> mKeys = vM.getPropertyKeys();
 		
-		Member m = new Member();
+		MemberDTO m = new MemberDTO();
 		
 		if ( mKeys.contains(ID) ) {
 			
@@ -447,9 +501,9 @@ public class RefsetConvertor {
 	 * @param ls
 	 * @return
 	 */
-	public static List<Refset> getHistoryRefsets(List<Edge> ls) {
+	public static List<RefsetDTO> getHistoryRefsets(List<Edge> ls) {
 
-		List<Refset> history = new ArrayList<Refset>();
+		List<RefsetDTO> history = new ArrayList<RefsetDTO>();
 
 		if(ls != null) {
 			
@@ -458,7 +512,7 @@ public class RefsetConvertor {
 				
 				Vertex vR = eR.getVertex(Direction.IN);
 				
-				Refset r = getRefset(vR);
+				RefsetDTO r = getRefset(vR);
 
 				LOGGER.trace("Adding history refset as {} ", r.toString());
 
@@ -476,14 +530,14 @@ public class RefsetConvertor {
 	 * @param vR
 	 * @return
 	 */
-	private static Refset getRefset(Vertex vR) {
+	private static RefsetDTO getRefset(Vertex vR) {
 
 		if (vR == null) {
 			
 			return null;
 		}
 		
-		Refset r = new Refset();
+		RefsetDTO r = new RefsetDTO();
 		Set<String> keys = vR.getPropertyKeys();
 		
 		if ( keys.contains(CREATED) ) {
@@ -621,13 +675,107 @@ public class RefsetConvertor {
 
 		}
 		
+		//new fields post MVP
+		if ( keys.contains(SCOPE) ) {
+			
+			String scope = vR.getProperty(SCOPE);
+			r.setScope(scope);
+		
+		}
+		
+		if ( keys.contains(SNOMED_CT_EXT) ) {
+			
+			String snomedCTExtension = vR.getProperty(SNOMED_CT_EXT);
+			r.setSnomedCTExtension(snomedCTExtension);
+		
+		}
+		
+		if ( keys.contains(SNOMED_CT_VERSION) ) {
+			
+			String snomedCTVersion = vR.getProperty(SNOMED_CT_VERSION);
+			r.setSnomedCTVersion(snomedCTVersion);
+		
+		}
+		
+		if ( keys.contains(ORIGIN_COUNTRY) ) {
+			
+			String originCountry = vR.getProperty(ORIGIN_COUNTRY);
+			r.setOriginCountry(originCountry);
+		
+		}
+		
+		if ( keys.contains(IMPLEMENTATION_DETAILS) ) {
+			
+			String implementationDetails = vR.getProperty(IMPLEMENTATION_DETAILS);
+			r.setImplementationDetails(implementationDetails);
+		
+		}
+		
+		if ( keys.contains(CONTRIBUTING_ORG) ) {
+			
+			String contributingOrganization = vR.getProperty(CONTRIBUTING_ORG);
+			r.setContributingOrganization(contributingOrganization);
+		
+		}
+		
+		if ( keys.contains(CLINICAL_DOMAIN) ) {
+			
+			String clinicalDomain = vR.getProperty(CLINICAL_DOMAIN);
+			r.setClinicalDomain(clinicalDomain);
+		
+		}
+		
+		if ( keys.contains(VIEW_COUNT) ) {
+			
+			Integer views = vR.getProperty(VIEW_COUNT);
+
+			r.getMatrix().setViews(views);
+				
+		}
+		
+		if ( keys.contains(DOWNLOAD_COUNT) ) {
+			Integer downloads = vR.getProperty(DOWNLOAD_COUNT);
+
+			r.getMatrix().setDownloads(downloads);
+		
+		}
+		
+		if ( keys.contains(EXT_URL) ) {
+			
+			String externalUrl = vR.getProperty(EXT_URL);
+
+			r.setExternalUrl(externalUrl);
+		
+		}
+		
+		if ( keys.contains(EXT_CONTACT) ) {
+			
+			String externalContact = vR.getProperty(EXT_CONTACT);
+
+			r.setExternalContact(externalContact);
+		
+		}
+		
+		if ( keys.contains(REFSET_STATUS) ) {
+			
+			String status = vR.getProperty(REFSET_STATUS);
+			r.setStatus(status);
+		
+		}
+		if ( keys.contains(VERSION) ) {
+			
+			Integer version = vR.getProperty(VERSION);
+			r.setVersion(version);
+		
+		}
+		
 		return r;
 
 	}
 	
-	protected static List<Member> getHistoryMembers(Iterable<Edge> eRs ) {
+	protected static List<MemberDTO> getHistoryMembers(Iterable<Edge> eRs ) {
 		
-		List<Member> members = new ArrayList<Member>();
+		List<MemberDTO> members = new ArrayList<MemberDTO>();
 
 		if(eRs != null) {
 			
@@ -636,7 +784,7 @@ public class RefsetConvertor {
 				
 				Vertex vM = eR.getVertex(Direction.IN);
 				
-				Member m = getMember(vM);
+				MemberDTO m = getMember(vM);
 				
 				Set<String> eKeys = eR.getPropertyKeys();
 				if ( eKeys.contains(REFERENCE_COMPONENT_ID) ) {
@@ -661,14 +809,14 @@ public class RefsetConvertor {
 	 * @param ls
 	 * @return
 	 */
-	public static List<Refset> getStateRefsets(List<Vertex> ls) {
+	public static List<RefsetDTO> getStateRefsets(List<Vertex> ls) {
 	
-		List<Refset> history = new ArrayList<Refset>();
+		List<RefsetDTO> history = new ArrayList<RefsetDTO>();
 		if (ls != null && !ls.isEmpty()) {
 			
 			for (Vertex vR : ls) {
 				
-				Refset r = getRefset(vR);
+				RefsetDTO r = getRefset(vR);
 
 				LOGGER.trace("Adding history refset as {} ", r.toString());
 
@@ -684,15 +832,15 @@ public class RefsetConvertor {
 	 * @param fls
 	 * @return
 	 */
-	public static List<Member> getStateMembers(List<Vertex> fls) {
+	public static List<MemberDTO> getStateMembers(List<Vertex> fls) {
 		
-		List<Member> members = new ArrayList<Member>();
+		List<MemberDTO> members = new ArrayList<MemberDTO>();
 
 		if(fls != null) {
 			
 			for (Vertex vM : fls) {
 							
-				Member m = getMember(vM);
+				MemberDTO m = getMember(vM);
 				LOGGER.trace("Adding member as {} ", m.toString());
 
 				members.add(m);

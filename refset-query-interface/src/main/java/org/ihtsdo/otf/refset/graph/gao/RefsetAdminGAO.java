@@ -12,9 +12,12 @@ import java.util.Map;
 
 import javax.annotation.Resource;
 
+import org.ihtsdo.otf.refset.common.SearchCriteria;
+import org.ihtsdo.otf.refset.common.SearchField;
 import org.ihtsdo.otf.refset.domain.Member;
 import org.ihtsdo.otf.refset.domain.MetaData;
 import org.ihtsdo.otf.refset.domain.Refset;
+import org.ihtsdo.otf.refset.domain.RefsetStatus;
 import org.ihtsdo.otf.refset.exception.EntityAlreadyExistException;
 import org.ihtsdo.otf.refset.exception.EntityNotFoundException;
 import org.ihtsdo.otf.refset.exception.LockingException;
@@ -81,7 +84,7 @@ public class RefsetAdminGAO {
 						
 			tg = factory.getEventGraph();
 			
-			if (rGao.isSctIdExist(r.getSctId(), tg.getBaseGraph())) {
+			if (isSctIdExist(r.getSctId())) {
 				
 				throw new EntityAlreadyExistException("Refset with same sctid already exist");
 				
@@ -91,7 +94,7 @@ public class RefsetAdminGAO {
 
 			
 			/*if members exist then add members*/
-			List<Member> members = r.getMembers();
+			List<Member> members = r.getMemberList();
 			/*populate descriptions*/
 			List<String> rcIds = new ArrayList<String>();
 			
@@ -100,7 +103,7 @@ public class RefsetAdminGAO {
 				rcIds.add(member.getReferencedComponentId());
 				
 			}
-			Map<String, String> descriptions = conceptService.getMembersDescription(rcIds);
+			Map<String, String> descriptions = conceptService.getMembersDescription(rcIds, r.getSnomedCTVersion());
 			
 			int i = 0;
 			if( !CollectionUtils.isEmpty(members) ) {
@@ -164,6 +167,26 @@ public class RefsetAdminGAO {
 		return md;
 	}
 	
+
+	/**
+	 * @param sctId
+	 * @return
+	 */
+	private boolean isSctIdExist(String sctId) {
+
+		if (StringUtils.isEmpty(sctId)) {
+			
+			return false;
+		}
+		
+		SearchCriteria criteria = new SearchCriteria();
+		criteria.addSearchField(SearchField.sctId, sctId);
+		
+		Long noOfRefsets = rGao.totalNoOfRefset(criteria);
+		
+		return noOfRefsets > 0 ? true : false;
+	}
+
 
 	/**
 	 * @param r {@link Refset}
@@ -242,6 +265,86 @@ public class RefsetAdminGAO {
 
 			}
 			gr.setType(VertexType.refset.toString());
+			
+			//new field after MVP
+			if (!StringUtils.isEmpty(r.getScope())) {
+				
+				gr.setScope(r.getScope());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getSnomedCTExtension())) {
+
+				gr.setSnomedCTExtension(r.getSnomedCTExtension());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getSnomedCTExtensionNs())) {
+
+				gr.setSnomedCTExtensionNs(r.getSnomedCTExtensionNs());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getSnomedCTVersion())) {
+				
+				gr.setSnomedCTVersion(r.getSnomedCTVersion());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getOriginCountry())) {
+
+				gr.setOriginCountry(r.getOriginCountry());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getOriginCountryCode())) {
+
+				gr.setOriginCountryCode(r.getOriginCountryCode());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getContributingOrganization())) {
+
+				gr.setContributingOrganization(r.getContributingOrganization());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getImplementationDetails())) {
+
+				gr.setImplementationDetails(r.getImplementationDetails());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getClinicalDomain())) {
+
+				gr.setClinicalDomain(r.getClinicalDomain());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getClinicalDomainCode())) {
+
+				gr.setClinicalDomainCode(r.getClinicalDomainCode());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getExternalUrl())) {
+
+				gr.setExternalUrl(r.getExternalUrl());
+
+			}
+			
+			if (!StringUtils.isEmpty(r.getExternalContact())) {
+
+				gr.setExternalContact(r.getExternalContact());
+
+			}
+			
+			String status = StringUtils.isEmpty(r.getStatus()) ? RefsetStatus.inProgress.toString() : r.getStatus();
+			
+			gr.setStatus(status);
+		
+			gr.setVersion(1);
+			
 			
 			LOGGER.debug("Added Refset as vertex to graph {}", gr.getId());
 
@@ -349,7 +452,7 @@ public class RefsetAdminGAO {
 			LOGGER.debug("Updating members");
 
 			/*if members exist then update members*/
-			List<Member> members = r.getMembers();
+			List<Member> members = r.getMemberList();
 			
 			if( !CollectionUtils.isEmpty(members) ) {
 				
@@ -410,7 +513,8 @@ public class RefsetAdminGAO {
 
 		Object rVId = rGao.getRefsetVertex(r.getUuid(), fgf.create(g.getBaseGraph()));
 		
-        g.addListener(new RefsetHeaderChangeListener(g.getBaseGraph(), r.getModifiedBy()));
+        //g.addListener(new RefsetHeaderChangeListener(g.getBaseGraph(), r.getModifiedBy()));
+        g.addListener(new StatusChangeListerner(g.getBaseGraph(), r.getModifiedBy()));
 
 		Vertex rV = g.getVertex(rVId);//, GRefset.class);
 		
@@ -479,40 +583,117 @@ public class RefsetAdminGAO {
 
 		if (!StringUtils.isEmpty(compTypeId)) {
 			
-			//rV.setComponentTypeId(compTypeId);
 			rV.setProperty(MEMBER_TYPE_ID, compTypeId);
 		}
 		
 		Integer activeFlag = r.isActive() ? 1 : 0;
 
-		//rV.setActive(activeFlag);
 		rV.setProperty(ACTIVE, activeFlag);
 		
 		String typeId = r.getTypeId();
 
 		if (!StringUtils.isEmpty(typeId)) {
 			
-			//rV.setTypeId(typeId);
 			rV.setProperty(TYPE_ID, typeId);
 		}
 
-		//rV.setModifiedBy(r.getModifiedBy());
-		//rV.setModifiedDate(new DateTime().getMillis());
 		rV.setProperty(MODIFIED_BY, r.getModifiedBy());
 		rV.setProperty(MODIFIED_DATE, new DateTime().getMillis());
 		DateTime ert = r.getExpectedReleaseDate();
 		if (ert != null) {
 			
-			//rV.setExpectedReleaseDate(ert.getMillis());
 			rV.setProperty(EXPECTED_PUBLISH_DATE, ert.getMillis());
 		}
 		
 		if (!StringUtils.isEmpty(r.getSctId())) {
 			
-			//rV.setSctdId(r.getSctId());
 			rV.setProperty(SCTID, r.getSctId());
 		}
+		
+		//new field after MVP
+		if (!StringUtils.isEmpty(r.getScope())) {
+			
+			rV.setProperty(SCOPE, r.getScope());
 
+		}
+		
+		if (!StringUtils.isEmpty(r.getSnomedCTExtension())) {
+
+			rV.setProperty(SNOMED_CT_EXT, r.getSnomedCTExtension());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getSnomedCTExtensionNs())) {
+
+			rV.setProperty(SNOMED_CT_EXT_NS, r.getSnomedCTExtensionNs());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getSnomedCTVersion())) {
+			
+			rV.setProperty(SNOMED_CT_VERSION, r.getSnomedCTVersion());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getOriginCountry())) {
+
+			rV.setProperty(ORIGIN_COUNTRY, r.getOriginCountry());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getOriginCountryCode())) {
+
+			rV.setProperty(ORIGIN_COUNTRY_CODE, r.getOriginCountryCode());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getContributingOrganization())) {
+
+			rV.setProperty(CONTRIBUTING_ORG, r.getContributingOrganization());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getImplementationDetails())) {
+
+			rV.setProperty(IMPLEMENTATION_DETAILS, r.getImplementationDetails());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getClinicalDomain())) {
+
+			rV.setProperty(CLINICAL_DOMAIN, r.getClinicalDomain());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getClinicalDomainCode())) {
+
+			rV.setProperty(CLINICAL_DOMAIN_CODE, r.getClinicalDomainCode());
+
+		}		
+		if (!StringUtils.isEmpty(r.getExternalUrl())) {
+
+			rV.setProperty(EXT_URL, r.getExternalUrl());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getExternalContact())) {
+
+			rV.setProperty(EXT_CONTACT, r.getExternalContact());
+
+		}
+		
+		if (!StringUtils.isEmpty(r.getStatus()) && !r.getStatus().equals(rV.getProperty(REFSET_STATUS))) {
+			
+			rV.setProperty(REFSET_STATUS, r.getStatus());
+			Object verObj = rV.getProperty(VERSION);
+			
+			Integer version = verObj != null ? (Integer)verObj + 1 : 1;
+			
+			rV.setProperty(VERSION, version);
+
+		}
+		
+		
 		
 		LOGGER.debug("updateRefsetNode {} finished", rV);
 
@@ -527,7 +708,7 @@ public class RefsetAdminGAO {
 	 * @throws EntityNotFoundException 
 	 * @throws RefsetGraphAccessException 
 	 */
-	public Map<String, String> addMembers(List<Rf2Record> rf2rLst, String refsetId, String user) throws EntityNotFoundException, RefsetGraphAccessException {
+	public Map<String, String> addMembers(List<Rf2Record> rf2rLst, String refsetId, String user, String release) throws EntityNotFoundException, RefsetGraphAccessException {
 		
 		Map<String, String> outcome = new HashMap<String, String>();
 		
@@ -539,7 +720,7 @@ public class RefsetAdminGAO {
 			
 			Vertex rV = rGao.getRefsetVertex(refsetId, fgf.create(g.getBaseGraph()));
 
-			Map<String, String> descriptions = populateDescription(rf2rLst);
+			Map<String, String> descriptions = populateDescription(rf2rLst, release);
 			Map<String, Vertex> processed = new HashMap<String, Vertex>();
 			for (Rf2Record r : rf2rLst) {
 				
@@ -683,7 +864,7 @@ public class RefsetAdminGAO {
 	 * @return
 	 * @throws RefsetGraphAccessException 
 	 */
-	private Map<String, String> populateDescription(List<Rf2Record> rf2rLst) throws RefsetGraphAccessException {
+	private Map<String, String> populateDescription(List<Rf2Record> rf2rLst, String version) throws RefsetGraphAccessException {
 
 		Map<String, String> descriptions = new HashMap<String, String>();
 		
@@ -698,7 +879,7 @@ public class RefsetAdminGAO {
 			rcIds.add(record.getReferencedComponentId());
 			
 		}
-		descriptions = conceptService.getMembersDescription(rcIds);
+		descriptions = conceptService.getMembersDescription(rcIds, version);
 
 		return descriptions;
 	}

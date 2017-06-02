@@ -16,5 +16,5 @@ package org.ihtsdo.otf.refset.schema;
  */
 public enum Operation {
 
-	schema, index, print, update
+	schema, index, print, update, repair
 }

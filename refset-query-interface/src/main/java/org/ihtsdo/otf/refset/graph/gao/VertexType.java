@@ -16,5 +16,5 @@ package org.ihtsdo.otf.refset.graph.gao;
  */
 public enum VertexType {
 
-	refset, member, hRefset, hMember
+	refset, member, hRefset, hMember, user
 }

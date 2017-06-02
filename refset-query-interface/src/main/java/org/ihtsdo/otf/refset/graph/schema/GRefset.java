@@ -9,7 +9,6 @@ import com.tinkerpop.frames.Property;
 import com.tinkerpop.frames.VertexFrame;
 
 /**
- * @author Episteme Partners
  *
  */
 
@@ -282,5 +281,197 @@ public interface GRefset extends VertexFrame {
 	 */
 	@Property( value = "latestEffectiveTime")
 	public void setLatestEffectiveTime(long latestEffectiveTime);
+	
+	/**
+	 * @return the scope
+	 */
+	@Property( value = "scope")
+	public String getScope();
+
+	/**
+	 * @param scope the scope to set
+	 */
+	@Property( value = "scope")
+	public void setScope(String scope);
+
+	/**
+	 * @return the contributingOrganization
+	 */
+	@Property( value = "contributingOrganization")
+	public String getContributingOrganization();
+	/**
+	 * @param contributingOrganization the contributingOrganization to set
+	 */
+	@Property( value = "contributingOrganization")
+	public void setContributingOrganization(String contributingOrganization);
+	
+	/**
+	 * @return the originCountry
+	 */
+	@Property( value = "originCountry")
+	public String getOriginCountry();
+
+	/**
+	 * @param originCountry the originCountry to set
+	 */
+	@Property( value = "originCountry")
+	public void setOriginCountry(String originCountry);
+
+	/**
+	 * @return the snomedCTVersion
+	 */
+	@Property( value = "snomedCTVersion")
+	public String getSnomedCTVersion();
+
+	/**
+	 * @param snomedCTVersion the snomedCTVersion to set
+	 */
+	@Property( value = "snomedCTVersion")
+	public void setSnomedCTVersion(String snomedCTVersion);
+
+	/**
+	 * @return the snomedCTExtension
+	 */
+	@Property( value = "snomedCTExtension")
+	public String getSnomedCTExtension();
+
+	/**
+	 * @param snomedCTExtension the snomedCTExtension to set
+	 */
+	@Property( value = "snomedCTExtension")
+	public void setSnomedCTExtension(String snomedCTExtension);
+
+	/**
+	 * @return the implementationDetails
+	 */
+	@Property( value = "implementationDetails")
+	public String getImplementationDetails();
+
+	/**
+	 * @param implementationDetails the implementationDetails to set
+	 */
+	@Property( value = "implementationDetails")
+	public void setImplementationDetails(String implementationDetails);
+
+	/**
+	 * @return the clinicalDomain
+	 */
+	@Property( value = "clinicalDomain")
+	public String getClinicalDomain();
+	/**
+	 * @param clinicalDomain the clinicalDomain to set
+	 */
+	@Property( value = "clinicalDomain")
+	public void setClinicalDomain(String clinicalDomain);
+	
+
+	/**
+	 * @return the views
+	 */
+	
+	@Property( value = "viewCount")
+	public int getViews();
+	/**
+	 * @param views the views to set
+	 */
+	@Property( value = "viewCount")
+	public void setViews(int views);
+	/**
+	 * @return the downloads
+	 */
+	@Property( value = "downloadCount")
+	public int getDownloads();
+	/**
+	 * @param downloads the downloads to set
+	 */
+	@Property( value = "downloadCount")
+	public void setDownloads(int downloads);
+	
+	/**
+	 * @return the externalUrl
+	 */
+	@Property( value = "externalUrl")
+	public String getExternalUrl();
+
+	/**
+	 * @param externalUrl the externalUrl to set
+	 */
+	@Property( value = "externalUrl")
+	public void setExternalUrl(String externalUrl);
+
+	/**
+	 * @return the externalContact
+	 */
+	@Property( value = "externalContact")
+	public String getExternalContact();
+
+	/**
+	 * @param externalContact the externalContact to set
+	 */
+	@Property( value = "externalContact")
+	public void setExternalContact(String externalContact);
+	
+	/**
+	 * @return the clinicalDomainCode
+	 */
+	@Property( value = "clinicalDomainCode")
+	public String getClinicalDomainCode();
+
+	/**
+	 * @param clinicalDomainCode the clinicalDomainCode to set
+	 */
+	@Property( value = "clinicalDomainCode")
+	public void setClinicalDomainCode(String clinicalDomainCode);
+
+	/**
+	 * @return the snomedCTExtensionNs
+	 */
+	@Property( value = "snomedCTExtensionNs")
+	public String getSnomedCTExtensionNs();
+
+	/**
+	 * @param snomedCTExtensionNs the snomedCTExtensionNs to set
+	 */
+	@Property( value = "snomedCTExtensionNs")
+	public void setSnomedCTExtensionNs(String snomedCTExtensionNs);
+
+	/**
+	 * @return the originCountryCode
+	 */
+	@Property( value = "originCountryCode")
+	public String getOriginCountryCode();
+
+	/**
+	 * @param originCountryCode the originCountryCode to set
+	 */
+	@Property( value = "originCountryCode")
+	public void setOriginCountryCode(String originCountryCode);
+	
+	
+	/**
+	 * @return the status
+	 */
+	@Property( value = "refsetStatus")
+	public String getStatus();
+	
+	/**
+	 * @param status the status to set
+	 */
+	@Property( value = "refsetStatus")
+	public void setStatus(String status);
+	
+	/**
+	 * @return the version
+	 */
+	@Property( value = "version")
+	public Integer getVersion();
+	
+	/**
+	 * @param version the version to set
+	 */
+	@Property( value = "version")
+	public void setVersion(Integer version);
+
+
 
 }

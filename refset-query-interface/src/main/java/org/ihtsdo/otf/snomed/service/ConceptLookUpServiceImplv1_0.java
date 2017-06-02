@@ -42,8 +42,10 @@ import com.tinkerpop.blueprints.Vertex;
 
 /**
  * Service to look up Terminology data.
- *
+ * *deprecated due to introduction of new {@link ConceptLookUpServiceImplv1_1} service which
+ *integrates Term Server in real time.
  */
+@Deprecated
 public class ConceptLookUpServiceImplv1_0 implements ConceptLookupService {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(ConceptLookUpServiceImplv1_0.class);
@@ -56,7 +58,7 @@ public class ConceptLookUpServiceImplv1_0 implements ConceptLookupService {
 	 */
 	@Override
 	@Cacheable(value = { "concepts" })
-	public Map<String, Concept> getConcepts(Set<String> conceptIds)
+	public Map<String, Concept> getConcepts(Set<String> conceptIds, String release)
 			throws ConceptServiceException {
 
 		LOGGER.debug("getting concepts details for {}", conceptIds);
@@ -161,7 +163,7 @@ public class ConceptLookUpServiceImplv1_0 implements ConceptLookupService {
 	 */
 	@Override
 	@Cacheable(value = { "concept" })
-	public Concept getConcept(String conceptId) throws ConceptServiceException,
+	public Concept getConcept(String conceptId, String release) throws ConceptServiceException,
 			EntityNotFoundException {
 		
 		LOGGER.debug("getting concept details for {} ", conceptId);
@@ -396,7 +398,7 @@ public class ConceptLookUpServiceImplv1_0 implements ConceptLookupService {
 	 */
 	@Override
 	@Cacheable(value = { "referenceComponentDescriptions" })
-	public Map<String, String> getMembersDescription(List<String> rcIds) throws RefsetGraphAccessException  {
+	public Map<String, String> getMembersDescription(List<String> rcIds, String release) throws RefsetGraphAccessException  {
 		
 		LOGGER.trace("getting members description for {} ", rcIds);
 
